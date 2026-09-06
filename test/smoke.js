@@ -34,6 +34,10 @@ const check = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else
   const badStart = await api('start', {room, token: B, method: 'POST'});
   check('non-host refused the deal', badStart.status === 400 && /only the host/i.test(badStart.data.error), JSON.stringify(badStart.data));
 
+  const setLimit = await api('opts', {room, token: A, body: {limit: 150}});
+  check('host set the knock-out score', setLimit.status === 200 && setLimit.data.view.limit === 150,
+    String(setLimit.data && setLimit.data.view && setLimit.data.view.limit));
+
   const dealt = await api('start', {room, token: A, method: 'POST'});
   check('host dealt', dealt.status === 200 && dealt.data.view.phase === 'play', JSON.stringify(dealt.data).slice(0, 120));
 
@@ -48,12 +52,12 @@ const check = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else
   check('a stranger with the code gets no hand', anon.data.view.hand.length === 0);
   check('no token echoed back', !aView.text.includes(B));
 
-  console.log('\nplaying it out');
+  console.log('\nplaying a hand out');
   const tok = {}; tok[alice.data.playerId] = A; tok[bob.data.playerId] = B;
   let view = aView.data.view.yourTurn ? aView.data.view : bView.data.view;
   let moves = 0, presses = 0, plays = 0;
 
-  while (view.phase === 'play' && moves < 600) {
+  while (view.phase === 'play' && moves < 900) {
     const me = view.turnId;
     const cur = await api('state', {room, token: tok[me]});
     view = cur.data.view;
@@ -67,7 +71,7 @@ const check = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else
       if (['wild', 'wildfire'].includes(card.k)) move.color = ['ember', 'volt', 'frost', 'vapor'][Math.floor(Math.random() * 4)];
       if (['snipe', 'peek', 'gift', 'trade'].includes(card.k)) {
         if (!(card.k === 'gift' && view.hand.length === 1)) {
-          const other = view.players.find(p => p.id !== me);
+          const other = view.players.find(p => p.id !== me && view.seats.includes(p.id));
           move.target = other.id;
           if (card.k === 'gift') move.giftCardId = view.hand.find(c => c.id !== card.id).id;
         }
@@ -82,10 +86,28 @@ const check = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else
     moves++;
   }
 
-  check('the game reached a winner', view.phase === 'over', view.phase + ' after ' + moves + ' moves');
-  if (view.phase === 'over') {
-    const w = view.players.find(p => p.id === view.winner);
-    console.log('  ' + moves + ' moves (' + plays + ' plays, ' + presses + ' presses) — winner: ' + (w && w.name));
+  console.log('\nscoring');
+  check('the hand ended', view.phase === 'round' || view.phase === 'over', view.phase + ' after ' + moves + ' moves');
+  const winner = view.players.find(p => p.id === view.winner);
+  console.log('  ' + moves + ' moves (' + plays + ' plays, ' + presses + ' presses) — hand taken by ' + (winner && winner.name));
+  check('the scoresheet gained a row', (view.history || []).length === 1, String((view.history || []).length));
+  check('the hand winner was charged nothing', winner.score === 0, String(winner.score));
+  const loser = view.players.find(p => p.id !== view.winner);
+  check('the loser was charged for their hand', loser.score > 0, String(loser.score));
+  check('the sheet matches the totals', view.history[0].deltas[loser.id] === loser.score);
+  check('the sheet carries points, never card ids', JSON.stringify(view.history).indexOf('"c') === -1);
+
+  console.log('\nnext hand');
+  const badNext = await api('next', {room, token: B, method: 'POST'});
+  check('a non-host cannot deal the next hand',
+    badNext.status === 400 && /only the host/i.test(badNext.data.error), JSON.stringify(badNext.data));
+
+  if (view.phase === 'round') {
+    const nxt = await api('next', {room, token: A, method: 'POST'});
+    check('the host deals the next hand', nxt.status === 200 && nxt.data.view.phase === 'play', JSON.stringify(nxt.data).slice(0, 110));
+    check('it is hand 2', nxt.data.view.round === 2, String(nxt.data.view.round));
+    check('scores carried across hands', nxt.data.view.players.find(p => p.id === loser.id).score === loser.score);
+    check('a fresh seven cards', nxt.data.view.hand.length === 7, String(nxt.data.view.hand.length));
   }
 
   const late = await api('join', {room, body: {name: 'Carol', color: 'vapor'}});
