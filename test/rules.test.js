@@ -143,13 +143,13 @@ console.log('\nhand manipulation');
   engine.applyMove(s, ids.a, {type: 'play', cardId: gf.id, target: ids.b, giftCardId: keep.id});
   check('gift moves the chosen card to the target',
     s.hands[ids.b].length === 1 && s.hands[ids.b][0].id === keep.id);
-  check('gift empties the giver and wins', s.phase === 'over' && s.winner === ids.a);
+  check('gift empties the giver and takes the hand', s.phase === 'round' && s.winner === ids.a, s.phase);
 }
 {
   const gf = C('ember', 'gift');
   const {s, ids} = setup(['a', 'b'], {a: [gf], b: [NUM('volt', 1)]});
   engine.applyMove(s, ids.a, {type: 'play', cardId: gf.id});
-  check('gift as your last card simply wins', s.phase === 'over' && s.winner === ids.a);
+  check('gift as your last card simply takes the hand', s.phase === 'round' && s.winner === ids.a, s.phase);
 }
 {
   const pk = C('ember', 'peek');
@@ -184,11 +184,15 @@ console.log('\nthe blast call');
 console.log('\nwinning');
 {
   const last = NUM('ember', 3);
-  const {s, ids} = setup(['a', 'b'], {a: [last], b: [NUM('volt', 1)]});
+  const {s, ids} = setup(['a', 'b'], {a: [last], b: [NUM('volt', 1), C('volt', 'skip')]});
   engine.applyMove(s, ids.a, {type: 'play', cardId: last.id});
-  check('emptying your hand ends the game', s.phase === 'over');
-  check('the winner is recorded', s.winner === ids.a);
-  throws('no moves after the game is over',
+  // Emptying your hand ends the HAND. Whether the MATCH is over is decided by
+  // the scoresheet — that is test/match.test.js's job.
+  check('emptying your hand ends the hand', s.phase === 'round', s.phase);
+  check('the winner of the hand is recorded', s.winner === ids.a);
+  check('the winner is charged nothing', s.scores[ids.a] === 0, String(s.scores[ids.a]));
+  check('the loser is charged for what they held (1+20)', s.scores[ids.b] === 21, String(s.scores[ids.b]));
+  throws('no moves once the hand is over',
     () => engine.applyMove(s, ids.b, {type: 'press'}), 'not running');
 }
 

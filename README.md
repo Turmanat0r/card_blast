@@ -47,11 +47,37 @@ cards per press makes the table inject cards faster than players can shed
 them, which turns a 15-minute game into an hour (measured: 236 moves per game
 at ~2.0, 122 at ~1.5).
 
+**Your name sticks.** Name and colour are remembered on the device, so a
+returning player sees "Playing as Sirocco" and a Change button rather than
+setting up again. Opening a shared room link with a name already saved takes
+you straight to the table.
+
 **Names.** The home screen rolls you a random one from a pool themed to your
 suit: Ember names are volcanoes, Volt storms, Frost glaciers, Vapor winds. Every
 entry is a real place or weather term and never a person's name — which is why
 the glacier list skips the many named after people. Type over it if you'd rather.
 Entries must stay within 14 characters; `test/names.test.js` enforces it.
+
+**Scoring.** A match is several hands. Whoever empties their hand takes it and
+scores nothing; everyone else adds up what they are still holding — number
+cards at face value, coloured actions at 20, wilds and the colourless extras at
+50. Totals carry across hands, and reaching the knock-out score puts you out of
+the match. Last player standing wins. Because the hand's winner adds zero,
+winning a hand can never knock you out.
+
+The host picks the knock-out score in the lobby. These are measured, not
+guessed — a losing player is left holding about 80 points, so a whole deck
+(2100 points) is worth far more than any one hand:
+
+| Limit | Feel | Hands for four players |
+|---|---|---|
+| 150 | quick | ~4 |
+| **250** | **standard (default)** | **~6** |
+| 400 | long | ~9 |
+| 600 | marathon | ~13 |
+
+The scoresheet is a table of every hand, per player, with running totals — on
+screen between hands, and behind the **Scores** button mid-hand.
 
 **Calling it.** Down to one card, you choose whether to call BLAST. Stay quiet
 and any player can catch you on their turn — that costs you two presses.
@@ -108,6 +134,7 @@ node test/rules.test.js       # 41 — turn order, every card's effect, winning
 node test/security.test.js    # 43 — redaction, tokens, move validation
 node test/api.test.js         # 36 — the real handler against a fake Redis
 node test/names.test.js       # 16 — the random-name pools (incl. the 14-char cap)
+node test/match.test.js       # 56 — card values, scoresheet, knock-outs, match length
 node test/sim.js 500          # fuzzer: 500 random games, 2-6 players
 node test/sim.js 800 4        # 800 games pinned to 4 players
 ```
@@ -119,7 +146,9 @@ design, where the browser held the whole game blob.
 (including the compare-and-set script), so routing, host checks, tokens and
 what really goes over the wire are all covered.
 
-`sim.js` bots play **only from the redacted view** — the same blob a browser
+`sim.js` plays whole **matches**, not single hands, so scoring, knock-outs and
+re-dealing to a shrinking table are all exercised. Its bots play **only from
+the redacted view** — the same blob a browser
 gets. That makes it two tests in one: it proves the view carries enough to
 play the game (zero illegal proposals) while a leak check proves it carries
 nothing more. It also checks that cards are never created or destroyed, that

@@ -6,8 +6,8 @@
 // crashes and stuck states, and it proves the redacted view actually contains
 // enough to play, while a leak check confirms it contains nothing more.
 //
-//   node test/sim.js            500 games, 2-6 players
-//   node test/sim.js 800 4      800 games, pinned to 4 players
+//   node test/sim.js            500 matches, 2-6 players
+//   node test/sim.js 800 4      800 matches, pinned to 4 players
 const engine = require('../api/_engine.js');
 const crypto = require('crypto');
 
@@ -16,7 +16,7 @@ const FIXED = parseInt(process.argv[3] || '0', 10);
 const token = () => crypto.randomBytes(18).toString('base64url');
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-const stats = {games: 0, moves: [], plays: 0, presses: 0, catches: 0, maxHand: 0, stuck: 0, rejected: 0, leaks: 0};
+const stats = {games: 0, moves: [], plays: 0, presses: 0, catches: 0, maxHand: 0, stuck: 0, rejected: 0, leaks: 0, hands: []};
 
 function totalCards(s) {
   return s.draw.length + s.discard.length + s.seats.reduce((n, id) => n + s.hands[id].length, 0);
@@ -31,7 +31,9 @@ function leakCheck(s, pid) {
 
 /** Decide a move using only what the view exposes. */
 function decide(view) {
-  const others = view.players.filter(p => p.id !== view.you);
+  // Only seated players are legal targets; knocked-out ones still appear in
+  // the player list but are out of the hand.
+  const others = view.players.filter(p => p.id !== view.you && view.seats.indexOf(p.id) !== -1);
 
   // Catch anyone sitting quietly on one card — the view flags them.
   const quiet = others.find(p => p.uncalled && p.count === 1);
@@ -70,10 +72,14 @@ for (let g = 0; g < N_GAMES; g++) {
   s.opts = engine.sanitizeOpts(opts);
   engine.startGame(s);
 
-  const deckSize = totalCards(s);
-  let moves = 0;
+  let deckSize = totalCards(s);
+  let moves = 0, hands = 0;
 
-  while (s.phase === 'play' && moves < 4000) {
+  // A match is several hands, so this plays the whole thing: the inner loop is
+  // one hand, and the outer loop re-deals until somebody wins the match. That
+  // exercises scoring, knock-outs and re-dealing to a shrinking table.
+  while (s.phase !== 'over' && moves < 12000) {
+  while (s.phase === 'play' && moves < 12000) {
     const actor = s.seats[s.turn];
     const view = engine.viewFor(s, actor);
 
@@ -105,16 +111,30 @@ for (let g = 0; g < N_GAMES; g++) {
     moves++;
   }
 
-  if (s.phase !== 'over') { console.log(`game ${g} (${n}p): unfinished after ${moves} moves`); stats.stuck += 1000; }
+    // The hand ended. Score it, then deal the next one if the match goes on.
+    if (s.phase === 'round' || s.phase === 'over') hands++;
+    if (s.phase === 'round') {
+      const seatedBefore = s.seats.length;
+      engine.startGame(s);
+      deckSize = totalCards(s);   // fresh deck each hand
+      if (s.seats.length > seatedBefore) throw new Error('a knocked-out player came back');
+    }
+  }
+
+  if (s.phase !== 'over') { console.log(`match ${g} (${n}p): unfinished after ${moves} moves`); stats.stuck += 1000; }
+  if (engine.activePlayers(s).length !== 1) { console.log(`match ${g}: ${engine.activePlayers(s).length} survivors`); stats.stuck += 1000; }
   stats.games++;
   stats.moves.push(moves);
+  stats.hands.push(hands);
 }
 
 const avg = stats.moves.reduce((a, b) => a + b, 0) / stats.moves.length;
-console.log('games completed  :', stats.games);
-console.log('avg moves/game   :', avg.toFixed(1));
-console.log('longest game     :', Math.max(...stats.moves), 'moves');
-console.log('shortest game    :', Math.min(...stats.moves), 'moves');
+const avgHands = stats.hands.reduce((a, b) => a + b, 0) / stats.hands.length;
+console.log('matches played   :', stats.games);
+console.log('hands/match      :', avgHands.toFixed(1));
+console.log('moves/match      :', avg.toFixed(1));
+console.log('longest match    :', Math.max(...stats.moves), 'moves');
+console.log('shortest match   :', Math.min(...stats.moves), 'moves');
 console.log('plays/presses    :', stats.plays, '/', stats.presses, '  catches:', stats.catches);
 console.log('biggest hand     :', stats.maxHand, 'cards');
 console.log('no-progress turns:', stats.stuck);

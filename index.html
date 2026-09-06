@@ -105,6 +105,38 @@ input.code{text-transform:uppercase;letter-spacing:.14em;text-align:center;font-
 .sep{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;margin:16px 0;text-transform:uppercase;letter-spacing:.1em}
 .sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--line)}
 
+/* ---------- returning player ---------- */
+.knownyou{display:flex;align-items:center;gap:12px}
+.knownyou .dot{width:16px;height:16px}
+.knowntext{flex:1;min-width:0}
+.knownname{font-size:20px;font-weight:700;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- knock-out score picker ---------- */
+.limits{display:flex;gap:8px;flex-wrap:wrap}
+.limitopt{
+  flex:1;min-width:64px;padding:10px 6px;border-radius:11px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--text);font:inherit;font-weight:700;cursor:pointer;text-align:center;
+}
+.limitopt .n{font-size:17px;line-height:1.1}
+.limitopt .s{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.limitopt.sel{border-color:var(--volt);box-shadow:0 0 0 2px rgba(184,255,43,.18)}
+.limitopt:disabled{cursor:default;opacity:.75}
+.limitopt.sel .s{color:var(--volt)}
+
+/* ---------- scoresheet ---------- */
+.sheetwrap{overflow-x:auto}
+table.score{width:100%;border-collapse:collapse;font-size:13px}
+.score th,.score td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.score th:first-child,.score td:first-child{text-align:left;color:var(--muted);font-weight:700}
+.score thead th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.score thead th span{display:inline-flex;align-items:center;gap:6px}
+.score tbody td{font-variant-numeric:tabular-nums}
+.score .took{color:var(--volt)}
+.score tfoot td{font-weight:700;font-size:15px;border-bottom:none;border-top:2px solid var(--line);padding-top:9px}
+.score .gone{opacity:.45;text-decoration:line-through}
+.score .knocked{color:var(--ember)}
+.headbtns{display:flex;gap:7px;align-items:center}
+
 /* ---------- name + reroll ---------- */
 .namerow{display:flex;gap:8px;align-items:stretch}
 .namerow input{flex:1;min-width:0}
@@ -283,7 +315,18 @@ input.code{text-transform:uppercase;letter-spacing:.14em;text-align:center;font-
   <h1>Shed your hand.<br>Survive the <span class="blast">blaster</span>.</h1>
   <p class="lede">Match colour or number to dump cards. Stuck? Hit the launcher &mdash; it might spit out nothing, or it might bury you. Everyone plays on their own phone.</p>
 
-  <div class="panel">
+  <!-- Returning player: we already know who they are, so don't make them
+       set it up again. One tap reveals the editor. -->
+  <div class="panel knownyou" id="knownYou" style="display:none">
+    <div class="dot" id="knownDot"></div>
+    <div class="knowntext">
+      <div class="tag">Playing as</div>
+      <div class="knownname" id="knownName">&mdash;</div>
+    </div>
+    <button class="btn sm ghost" type="button" id="changeMeBtn">Change</button>
+  </div>
+
+  <div class="panel" id="identityEditor">
     <label for="nameIn">Your name</label>
     <div class="namerow">
       <input type="text" id="nameIn" maxlength="14" placeholder="Roll one &rarr;" autocomplete="off" spellcheck="false">
@@ -325,6 +368,12 @@ input.code{text-transform:uppercase;letter-spacing:.14em;text-align:center;font-
   </div>
 
   <div class="panel">
+    <label>Knock-out score <span class="tag" id="limitNote"></span></label>
+    <div class="limits" id="limits"></div>
+    <p class="muted" id="limitHint" style="margin:9px 0 0"></p>
+  </div>
+
+  <div class="panel">
     <label>Deck &mdash; extra cards <span class="tag" id="hostOnlyNote"></span></label>
     <div class="toggles" id="toggles"></div>
   </div>
@@ -354,22 +403,31 @@ input.code{text-transform:uppercase;letter-spacing:.14em;text-align:center;font-
   <div class="log" id="log"></div>
 </section>
 
-<!-- ============ GAME OVER ============ -->
+<!-- ============ BETWEEN HANDS / MATCH OVER ============ -->
 <section id="screen-over" class="screen">
-  <div class="win">
-    <div class="trophy">&#127942;</div>
-    <h1 id="winName" style="font-size:34px">&mdash;</h1>
-    <p class="lede" style="margin:6px auto 22px">cleared their hand first</p>
-    <button class="btn go" id="rematchBtn">Deal again</button>
-    <p class="muted" id="rematchHint" style="margin-top:10px"></p>
+  <div class="win" style="padding:22px 10px 14px">
+    <div class="trophy" id="scoreTrophy">&#127942;</div>
+    <h1 id="winName" style="font-size:32px">&mdash;</h1>
+    <p class="lede" id="winSub" style="margin:6px auto 0"></p>
   </div>
+
+  <div class="panel">
+    <label>Scoresheet <span class="tag" id="limitTag"></span></label>
+    <div class="sheetwrap"><table class="score" id="scoreTable"></table></div>
+  </div>
+
+  <button class="btn go" id="dealBtn">Deal the next hand</button>
+  <p class="muted" id="rematchHint" style="text-align:center;margin-top:10px"></p>
 </section>
 
 <!-- fixed hand bar -->
 <div class="handbar" id="handbar" style="display:none">
   <div class="handhead">
     <div class="turnpill" id="turnPill">&mdash;</div>
-    <button class="btn sm ghost" id="catchBtn" style="display:none">Catch!</button>
+    <div class="headbtns">
+      <button class="btn sm ghost" id="catchBtn" style="display:none">Catch!</button>
+      <button class="btn sm ghost" id="scoreBtn">&#128203; Scores</button>
+    </div>
   </div>
   <div class="hand" id="hand"></div>
 </div>
@@ -461,10 +519,18 @@ const NAME_POOLS = {
 };
 const POOL_THEME = {ember: 'volcanoes', volt: 'storms', frost: 'glaciers', vapor: 'winds'};
 
+// ---- match length -----------------------------------------------------------
+// Must match LIMITS in api/_engine.js; the server rejects anything else. The
+// "hands" figures are measured, not guessed — see test/match.test.js.
+const LIMITS = [150, 250, 400, 600];
+const LIMIT_LABEL = {150: 'quick', 250: 'standard', 400: 'long', 600: 'marathon'};
+const LIMIT_HANDS = {150: 'about four', 250: 'about six', 400: 'about nine', 600: 'a dozen or more'};
+
 // ---- local state ------------------------------------------------------------
 let myName = localStorage.getItem('cb_name') || '';
 let myColor = localStorage.getItem('cb_color') || 'ember';
 let nameIsGenerated = false;   // false once the player types their own
+let editingIdentity = false;   // true while the name/colour editor is open
 let room = '';
 let token = '';
 let view = null;         // the redacted blob from the server
@@ -555,8 +621,11 @@ $('mCancel').onclick = () => finishModal(null);
 const askColor = () => openModal('Pick a colour', 'What colour is in play now?',
   COLORS.map(c => ({label: COLOR_NAME[c], value: c})), {noCancel: true});
 
+// Only players actually seated in this hand can be targeted — someone knocked
+// out of the match is still shown at the table but is not a legal target, and
+// the server rejects it.
 const askPlayer = (title, body) => openModal(title, body,
-  view.players.filter(p => p.id !== view.you)
+  view.players.filter(p => p.id !== view.you && (view.seats || []).indexOf(p.id) !== -1)
     .map(p => ({label: p.name + '  (' + p.count + ' card' + (p.count === 1 ? '' : 's') + ')', value: p.id})));
 
 const askOwnCard = (title, body, cards) => openModal(title, body,
@@ -722,7 +791,37 @@ function renderLobby() {
   $('lobbyHint').textContent = host
     ? (ps.length < 2 ? 'Waiting for at least one more player…' : 'Everyone in? Deal when ready.')
     : 'Waiting for ' + ((ps[0] && ps[0].name) || 'the host') + ' to deal…';
+  renderLimits();
   renderToggles();
+}
+
+function renderLimits() {
+  const host = view && view.isHost;
+  const limit = (view && view.limit) || 250;
+  const box = $('limits');
+  box.innerHTML = '';
+  LIMITS.forEach(n => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'limitopt' + (limit === n ? ' sel' : '');
+    b.disabled = !host || busy;
+    const big = document.createElement('div');
+    big.className = 'n';
+    big.textContent = n;
+    const sub = document.createElement('div');
+    sub.className = 's';
+    sub.textContent = LIMIT_LABEL[n];
+    b.appendChild(big);
+    b.appendChild(sub);
+    b.onclick = async () => {
+      try { const out = await api('opts', {body: {limit: n}}); applyView(out.view, true); }
+      catch (e) { flash(e.message); await refresh(); }
+    };
+    box.appendChild(b);
+  });
+  $('limitNote').textContent = host ? '' : '— host decides';
+  $('limitHint').textContent = 'Hold ' + limit + ' points at the end of a hand and you are out. '
+    + 'That is ' + (LIMIT_HANDS[limit] || 'several') + ' hands.';
 }
 
 function renderToggles() {
@@ -752,6 +851,143 @@ function renderToggles() {
   });
 }
 
+/**
+ * Fills a <table> with the running scoresheet: one row per finished hand,
+ * one column per player, totals underneath.
+ */
+function fillScoreTable(table) {
+  table.innerHTML = '';
+  const ps = view.players;
+
+  const thead = document.createElement('thead');
+  const hr = document.createElement('tr');
+  hr.appendChild(document.createElement('th'));
+  ps.forEach(p => {
+    const th = document.createElement('th');
+    const wrap = document.createElement('span');
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = COLOR_HEX[p.color] || '#888';
+    dot.style.width = '9px';
+    dot.style.height = '9px';
+    const nm = document.createElement('span');
+    nm.textContent = p.name;
+    if (p.out) nm.className = 'gone';
+    wrap.appendChild(dot);
+    wrap.appendChild(nm);
+    th.appendChild(wrap);
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  const hist = view.history || [];
+  if (!hist.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = ps.length + 1;
+    td.textContent = 'No hands finished yet.';
+    td.style.textAlign = 'center';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+  hist.forEach(h => {
+    const tr = document.createElement('tr');
+    const label = document.createElement('td');
+    label.textContent = 'Hand ' + h.round;
+    tr.appendChild(label);
+    ps.forEach(p => {
+      const td = document.createElement('td');
+      const d = h.deltas[p.id];
+      if (d === undefined) { td.textContent = '—'; td.style.opacity = '.35'; }   // already knocked out
+      else if (h.winner === p.id) { td.textContent = 'won'; td.className = 'took'; }
+      else td.textContent = '+' + d;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  const tfoot = document.createElement('tfoot');
+  const fr = document.createElement('tr');
+  const ft = document.createElement('td');
+  ft.textContent = 'Total';
+  fr.appendChild(ft);
+  ps.forEach(p => {
+    const td = document.createElement('td');
+    td.textContent = p.score;
+    if (p.out) td.className = 'knocked';
+    fr.appendChild(td);
+  });
+  tfoot.appendChild(fr);
+  table.appendChild(tfoot);
+}
+
+/** The scoresheet on demand, mid-hand, without leaving the table. */
+function showScoresheet() {
+  if (!view) return;
+  $('mTitle').textContent = 'Scoresheet';
+  $('mBody').textContent = 'Reach ' + view.limit + ' points and you are knocked out.';
+  const box = $('mChoices');
+  box.className = '';
+  box.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'sheetwrap';
+  const t = document.createElement('table');
+  t.className = 'score';
+  wrap.appendChild(t);
+  box.appendChild(wrap);
+  fillScoreTable(t);
+  $('mCancel').style.display = '';
+  $('mCancel').textContent = 'Close';
+  modalResolve = null;
+  $('modal').classList.add('on');
+}
+
+/** Between hands, and at the end of a match: who took it, and the sheet. */
+function renderScoreScreen() {
+  showScreen('screen-over');
+  const matchOver = view.phase === 'over';
+  const handWinner = view.players.find(p => p.id === view.winner);
+  const matchWinner = view.players.find(p => p.id === view.matchWinner);
+
+  $('scoreTrophy').textContent = matchOver ? '\u{1F3C6}' : '\u{1F389}';
+  $('winName').textContent = matchOver
+    ? (matchWinner ? matchWinner.name : 'Someone') + ' wins the match'
+    : (handWinner ? handWinner.name : 'Someone') + ' takes hand ' + view.round;
+
+  const out = (view.lastRound && view.lastRound.out) || [];
+  const names = out.map(id => {
+    const p = view.players.find(x => x.id === id);
+    return p ? p.name : 'Someone';
+  });
+  $('winSub').textContent = matchOver
+    ? 'Everyone else reached ' + view.limit + '.'
+    : names.length
+      ? names.join(' and ') + (names.length > 1 ? ' are knocked out.' : ' is knocked out.')
+      : 'Still everyone in. First to ' + view.limit + ' is out.';
+
+  $('limitTag').textContent = 'knock-out at ' + view.limit;
+  fillScoreTable($('scoreTable'));
+
+  const btn = $('dealBtn');
+  btn.style.display = view.isHost ? '' : 'none';
+  btn.disabled = busy;
+  btn.textContent = matchOver ? 'Start a new match' : 'Deal hand ' + (view.round + 1);
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      const o = await api(matchOver ? 'rematch' : 'next', {method: 'POST'});
+      applyView(o.view, true);
+    } catch (e) { flash(e.message); await refresh(); }
+    finally { btn.disabled = false; }
+  };
+  $('rematchHint').textContent = view.isHost ? ''
+    : matchOver ? 'Waiting for the host to start a new match…'
+    : 'Waiting for the host to deal the next hand…';
+}
+
 function renderSeats() {
   const box = $('seats');
   box.innerHTML = '';
@@ -767,8 +1003,13 @@ function renderSeats() {
     nm.appendChild(document.createTextNode(p.name + (p.id === view.you ? ' (you)' : '')));
     const cnt = document.createElement('div');
     cnt.className = 'cnt';
-    cnt.innerHTML = '<b>' + p.count + '</b> cards';
-    s.appendChild(nm); s.appendChild(cnt);
+    if (p.out) { cnt.textContent = 'knocked out'; cnt.style.color = 'var(--ember)'; }
+    else cnt.innerHTML = '<b>' + p.count + '</b> cards';
+    const sc = document.createElement('div');
+    sc.className = 'cnt';
+    sc.textContent = p.score + ' / ' + view.limit;
+    if (p.out) { nm.classList.add('gone'); s.style.opacity = '.6'; }
+    s.appendChild(nm); s.appendChild(cnt); s.appendChild(sc);
     if (p.uncalled) {
       const f = document.createElement('div');
       f.className = 'flag';
@@ -825,13 +1066,9 @@ function render() {
     return;
   }
 
-  if (view.phase === 'over') {
-    showScreen('screen-over');
-    const w = view.players.find(p => p.id === view.winner);
-    $('winName').textContent = (w ? w.name : 'Someone') + ' wins';
-    $('rematchBtn').style.display = view.isHost ? '' : 'none';
-    $('rematchBtn').disabled = busy;
-    $('rematchHint').textContent = view.isHost ? '' : 'Waiting for the host to deal again…';
+  // A hand just ended, or the whole match did — both show the scoresheet.
+  if (view.phase === 'round' || view.phase === 'over') {
+    renderScoreScreen();
     return;
   }
 
@@ -919,6 +1156,7 @@ function rollName() {
   myName = pick;
   nameIsGenerated = true;
   updateNameHint();
+  renderIdentity();
 }
 
 function updateNameHint() {
@@ -960,8 +1198,28 @@ async function enterRoom(code) {
 
 // ---- wiring -----------------------------------------------------------------
 $('nameIn').value = myName;
-$('nameIn').oninput = () => { nameIsGenerated = false; updateNameHint(); };
+$('nameIn').oninput = () => { nameIsGenerated = false; updateNameHint(); renderIdentity(); };
 $('rollBtn').onclick = rollName;
+$('scoreBtn').onclick = showScoresheet;
+
+/**
+ * A device that has played before already has a name and colour, so show them
+ * as a done deal rather than making the player set up again every time. The
+ * editor is one tap away.
+ */
+function renderIdentity() {
+  const settled = !!myName && !editingIdentity;
+  $('knownYou').style.display = settled ? 'flex' : 'none';
+  $('identityEditor').style.display = settled ? 'none' : '';
+  $('knownName').textContent = myName || '—';
+  $('knownDot').style.background = COLOR_HEX[myColor] || '#888';
+}
+
+$('changeMeBtn').onclick = () => {
+  editingIdentity = true;
+  renderIdentity();
+  $('nameIn').focus();
+};
 
 document.querySelectorAll('.swatch').forEach(sw => {
   sw.classList.toggle('sel', sw.dataset.c === myColor);
@@ -971,12 +1229,14 @@ document.querySelectorAll('.swatch').forEach(sw => {
     // A rolled name belongs to its suit, so it follows the colour. A name the
     // player typed is theirs, and is left alone.
     if (nameIsGenerated) rollName(); else updateNameHint();
+    renderIdentity();
   };
 });
 
 // First visit gets a name handed to them rather than an empty box; a returning
 // player keeps whatever they used last.
 if (myName) updateNameHint(); else rollName();
+renderIdentity();
 
 $('createBtn').onclick = async function () {
   if (!readIdentity()) return;
@@ -1018,13 +1278,6 @@ $('startBtn').onclick = async function () {
   finally { this.disabled = false; }
 };
 
-$('rematchBtn').onclick = async function () {
-  this.disabled = true;
-  try { const out = await api('rematch', {method: 'POST'}); applyView(out.view, true); }
-  catch (e) { flash(e.message); await refresh(); }
-  finally { this.disabled = false; }
-};
-
 $('pressBtn').onclick = () => send({type: 'press'});
 
 $('copyCodeBtn').onclick = async function () {
@@ -1058,8 +1311,17 @@ $('shareBtn').onclick = async function () {
   const code = (qs.get('room') || '').toUpperCase();
   if (!code) return;
   $('codeIn').value = code;
-  if (localStorage.getItem(tokenKey(code)) && myName) {
-    try { await enterRoom(code); } catch (e) { room = ''; token = ''; }
+  // Already know who you are? Go straight to the table — that is the whole
+  // point of remembering the name. Falls back to the home screen if the room
+  // has gone or the hand is already under way.
+  if (!myName) return;
+  try {
+    await enterRoom(code);
+  } catch (e) {
+    room = ''; token = '';
+    if (/already started/i.test(e.message || '')) {
+      alert('That game is already under way — you cannot join mid-match.');
+    }
   }
 })();
 </script>

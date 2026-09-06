@@ -214,18 +214,25 @@ module.exports = async (req, res) => {
         authed(s);
         if (!engine.isHost(s, me)) throw new engine.GameError('Only the host can change the deck.');
         if (s.phase !== 'lobby') throw new engine.GameError('Too late — the game has started.');
-        s.opts = engine.sanitizeOpts(body.opts);
+        if (body.opts !== undefined) s.opts = engine.sanitizeOpts(body.opts);
+        if (body.limit !== undefined) s.limit = engine.sanitizeLimit(body.limit);
       });
       res.status(200).json({view: engine.viewFor(state, me)});
       return;
     }
 
     // ---- host: deal ----
-    if (req.method === 'POST' && (action === 'start' || action === 'rematch')) {
+    // 'start'   first hand of a match, from the lobby
+    // 'next'    the following hand, once a hand's scores are on the board
+    // 'rematch' wipe the scoresheet and play a fresh match
+    if (req.method === 'POST' && (action === 'start' || action === 'next' || action === 'rematch')) {
       const {state} = await mutate(room, s => {
         authed(s);
         if (!engine.isHost(s, me)) throw new engine.GameError('Only the host can deal.');
-        if (action === 'rematch' && s.phase !== 'over') throw new engine.GameError('That round is still going.');
+        if (action === 'start' && s.phase !== 'lobby') throw new engine.GameError('The match is already under way.');
+        if (action === 'next' && s.phase !== 'round') throw new engine.GameError('That hand is still going.');
+        if (action === 'rematch' && s.phase !== 'over') throw new engine.GameError('The match is still going.');
+        if (action === 'rematch') engine.resetMatch(s);
         engine.startGame(s);
       });
       res.status(200).json({view: engine.viewFor(state, me)});

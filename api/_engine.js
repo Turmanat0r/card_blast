@@ -47,6 +47,47 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 const HAND_SIZE = 7;
 
+// ---------------------------------------------------------------- scoring
+// A match is several hands. Whoever empties their hand takes the hand and
+// scores nothing; everyone else adds up what they are still holding. Cross the
+// limit and you are out of the match.
+//
+// Values follow the Uno convention — number cards at face value, coloured
+// actions at 20, wilds at 50 — with our extras slotted in by colour: the
+// colour-matched extras score like actions, the colourless ones like wilds.
+const POINTS_ACTION = 20;
+const POINTS_WILD = 50;
+
+/** What one card is worth to whoever is caught holding it. */
+function cardValue(card) {
+  if (!card) return 0;
+  if (card.k === 'num') return card.n;
+  return COLOURLESS.indexOf(card.k) !== -1 ? POINTS_WILD : POINTS_ACTION;
+}
+
+/** Total value of a hand. */
+function handValue(hand) {
+  return (hand || []).reduce((n, c) => n + cardValue(c), 0);
+}
+
+// The limits the host can pick, and they are deliberately far below Uno's 500.
+// Measured, not guessed: a player who loses a hand is left holding about 80
+// points on average, so 500 would take roughly six losing hands to eliminate
+// one player and ten or more to finish a match. These land a four-player match
+// at a handful of hands. test/match.test.js keeps the arithmetic honest.
+const LIMITS = [150, 250, 400, 600];
+const DEFAULT_LIMIT = 250;
+
+function sanitizeLimit(n) {
+  const v = Math.round(Number(n));
+  return LIMITS.indexOf(v) === -1 ? DEFAULT_LIMIT : v;
+}
+
+/** Players still in the match. */
+function activePlayers(state) {
+  return state.players.filter(p => !state.eliminated[p.id]);
+}
+
 function defaultOpts() {
   const o = {};
   OPTIONAL.forEach(k => o[k] = true);
@@ -116,6 +157,14 @@ function createState() {
     opts: defaultOpts(),
     secrets: {},       // token -> playerId. NEVER leaves the server.
     log: [],
+
+    // ---- the match, which outlives any one hand ----
+    limit: DEFAULT_LIMIT,
+    scores: {},        // pid -> running total
+    eliminated: {},    // pid -> true once they cross the limit
+    history: [],       // one entry per finished hand, for the scoresheet
+    round: 0,
+    matchWinner: null,
   };
 }
 
@@ -146,11 +195,29 @@ function playerIdForToken(state, token) {
 const isHost = (state, pid) => state.players.length > 0 && state.players[0].id === pid;
 
 // ------------------------------------------------------------------- dealing
+/** Wipes the scoresheet so the table can start a brand new match. */
+function resetMatch(state) {
+  state.scores = {};
+  state.eliminated = {};
+  state.history = [];
+  state.round = 0;
+  state.matchWinner = null;
+  state.winner = null;
+}
+
+/**
+ * Deals one hand. Called for the first hand of a match and for every hand
+ * after, so only players still in the match get cards.
+ */
 function startGame(state) {
   if (state.phase === 'play') throw new GameError('Already playing.');
-  if (state.players.length < MIN_PLAYERS) throw new GameError('Need at least two players.');
+  // Rooms created before scoring existed, and any hand-rolled state, get the
+  // match fields filled in rather than blowing up.
+  if (!state.scores) resetMatch(state);
+  if (typeof state.limit !== 'number') state.limit = DEFAULT_LIMIT;
 
-  const seats = state.players.map(p => p.id);
+  const seats = activePlayers(state).map(p => p.id);
+  if (seats.length < MIN_PLAYERS) throw new GameError('Need at least two players.');
   const draw = buildDeck(state.opts);
   const hands = {};
   seats.forEach(id => hands[id] = draw.splice(-HAND_SIZE));
@@ -172,8 +239,49 @@ function startGame(state) {
   state.overload = false;
   state.uncalled = {};
   state.winner = null;
-  state.log = ['Cards dealt. ' + nameOf(state, seats[0]) + ' starts.'];
+  state.round = (state.round || 0) + 1;
+  state.lastRound = null;
+  state.log = ['Hand ' + state.round + ' dealt. ' + nameOf(state, seats[0]) + ' starts.'];
   return state;
+}
+
+/**
+ * Ends a hand: everyone still holding cards adds them up, the totals move, and
+ * anyone who has reached the limit drops out of the match. The hand's winner
+ * scores nothing, so winning can never eliminate you.
+ */
+function endRound(state, winnerPid) {
+  const deltas = {};
+  state.seats.forEach(id => {
+    deltas[id] = id === winnerPid ? 0 : handValue(state.hands[id]);
+    state.scores[id] = (state.scores[id] || 0) + deltas[id];
+  });
+
+  const newlyOut = [];
+  state.seats.forEach(id => {
+    if (!state.eliminated[id] && state.scores[id] >= state.limit) {
+      state.eliminated[id] = true;
+      newlyOut.push(id);
+    }
+  });
+
+  state.history.push({round: state.round, winner: winnerPid, deltas});
+  state.lastRound = {winner: winnerPid, deltas, out: newlyOut};
+  state.winner = winnerPid;
+
+  logLine(state, nameOf(state, winnerPid) + ' takes hand ' + state.round + '.');
+  newlyOut.forEach(id =>
+    logLine(state, nameOf(state, id) + ' is out of the match on ' + state.scores[id] + '.'));
+
+  // The hand's winner added zero, so there is always at least one survivor.
+  const left = activePlayers(state);
+  if (left.length <= 1) {
+    state.phase = 'over';
+    state.matchWinner = left.length ? left[0].id : winnerPid;
+    logLine(state, nameOf(state, state.matchWinner) + ' wins the match.');
+  } else {
+    state.phase = 'round';
+  }
 }
 
 // -------------------------------------------------------------------- helpers
@@ -422,11 +530,10 @@ function doPlay(state, pid, move) {
     }
   }
 
-  // ---- win, then the blast call ----
+  // ---- hand won, then the blast call ----
   if (state.hands[pid].length === 0) {
-    state.phase = 'over';
-    state.winner = pid;
-    logLine(state, me + ' is out. Game over.');
+    logLine(state, me + ' is out of cards.');
+    endRound(state, pid);
     return {peek};
   }
 
@@ -498,8 +605,19 @@ function viewFor(state, pid) {
       count: state.hands && state.hands[p.id] ? state.hands[p.id].length : 0,
       uncalled: !!(state.uncalled && state.uncalled[p.id] && state.hands[p.id] && state.hands[p.id].length === 1),
       host: state.players[0] && state.players[0].id === p.id,
+      // Running total and whether they have dropped out — public by design,
+      // the scoresheet is meant to be read across the table.
+      score: (state.scores && state.scores[p.id]) || 0,
+      out: !!(state.eliminated && state.eliminated[p.id]),
     })),
     log: (state.log || []).slice(-12),
+
+    // ---- the match ----
+    limit: state.limit || DEFAULT_LIMIT,
+    round: state.round || 0,
+    history: state.history || [],       // per-hand deltas; card values, never cards
+    lastRound: state.lastRound || null,
+    matchWinner: state.matchWinner || null,
   };
 
   if (state.phase === 'lobby') return view;
@@ -524,9 +642,11 @@ module.exports = {
   COLORS, KINDS, OPTIONAL, COLOURLESS, NEEDS_COLOR, NEEDS_TARGET,
   MIN_PLAYERS, MAX_PLAYERS, HAND_SIZE,
   GameError,
-  defaultOpts, sanitizeOpts, buildDeck, shuffle, fireCount,
+  LIMITS, DEFAULT_LIMIT, POINTS_ACTION, POINTS_WILD,
+  defaultOpts, sanitizeOpts, sanitizeLimit, buildDeck, shuffle, fireCount,
   createState, addPlayer, playerIdForToken, isHost, startGame,
   canPlay, applyMove, viewFor,
+  cardValue, handValue, resetMatch, activePlayers, endRound,
   // exported for tests
   _internals: {stepIdx, giveCards, rollFire, topCard, nameOf, logLine},
 };
