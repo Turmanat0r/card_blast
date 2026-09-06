@@ -47,6 +47,12 @@ cards per press makes the table inject cards faster than players can shed
 them, which turns a 15-minute game into an hour (measured: 236 moves per game
 at ~2.0, 122 at ~1.5).
 
+**Names.** The home screen rolls you a random one from a pool themed to your
+suit: Ember names are volcanoes, Volt storms, Frost glaciers, Vapor winds. Every
+entry is a real place or weather term and never a person's name — which is why
+the glacier list skips the many named after people. Type over it if you'd rather.
+Entries must stay within 14 characters; `test/names.test.js` enforces it.
+
 **Calling it.** Down to one card, you choose whether to call BLAST. Stay quiet
 and any player can catch you on their turn — that costs you two presses.
 
@@ -101,6 +107,7 @@ No dependencies, nothing to install — `node` and go. 120 assertions.
 node test/rules.test.js       # 41 — turn order, every card's effect, winning
 node test/security.test.js    # 43 — redaction, tokens, move validation
 node test/api.test.js         # 36 — the real handler against a fake Redis
+node test/names.test.js       # 16 — the random-name pools (incl. the 14-char cap)
 node test/sim.js 500          # fuzzer: 500 random games, 2-6 players
 node test/sim.js 800 4        # 800 games pinned to 4 players
 ```

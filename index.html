@@ -105,6 +105,11 @@ input.code{text-transform:uppercase;letter-spacing:.14em;text-align:center;font-
 .sep{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;margin:16px 0;text-transform:uppercase;letter-spacing:.1em}
 .sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--line)}
 
+/* ---------- name + reroll ---------- */
+.namerow{display:flex;gap:8px;align-items:stretch}
+.namerow input{flex:1;min-width:0}
+.namerow .btn{flex:none;white-space:nowrap}
+
 /* ---------- suit swatches ---------- */
 .swatches{display:flex;gap:9px}
 .swatch{
@@ -280,7 +285,11 @@ input.code{text-transform:uppercase;letter-spacing:.14em;text-align:center;font-
 
   <div class="panel">
     <label for="nameIn">Your name</label>
-    <input type="text" id="nameIn" maxlength="14" placeholder="e.g. Daniel" autocomplete="nickname">
+    <div class="namerow">
+      <input type="text" id="nameIn" maxlength="14" placeholder="Roll one &rarr;" autocomplete="off" spellcheck="false">
+      <button class="btn sm" type="button" id="rollBtn">&#127922; Roll</button>
+    </div>
+    <p class="muted" id="nameHint" style="margin:8px 0 0"></p>
     <div style="height:14px"></div>
     <label>Your colour</label>
     <div class="swatches" id="swatches">
@@ -429,9 +438,33 @@ const OPTIONAL = ['snipe', 'mirror', 'overload', 'peek', 'gift', 'twin', 'trade'
 const NEEDS_COLOR = ['wild', 'wildfire'];
 const NEEDS_TARGET = ['snipe', 'peek', 'gift', 'trade'];
 
+// ---- random names -----------------------------------------------------------
+// One pool per suit, themed to that suit's element: real volcanoes, real storm
+// phenomena, real glaciers, real named winds. Every entry is a real THING —
+// a place or a weather term — and never a real person's name, which is why
+// these lists avoid the many glaciers and hurricanes named after people.
+// Keep every entry at 14 characters or fewer: the input caps there and the
+// server truncates to the same length, so a longer name would arrive chopped.
+const NAME_POOLS = {
+  ember: ['Krakatoa', 'Vesuvius', 'Etna', 'Kilauea', 'Stromboli', 'Cotopaxi', 'Erebus',
+          'Pinatubo', 'Tambora', 'Hekla', 'Sakurajima', 'Nyiragongo', 'Merapi', 'Katla',
+          'Surtsey', 'Paricutin', 'Popocatepetl'],
+  volt:  ['Derecho', 'Supercell', 'Downburst', 'Microburst', 'Gustnado', 'Squall', 'Anvil',
+          'Sprite', 'Catatumbo', 'Thunderhead', 'Landspout', 'Waterspout', 'Firewhirl',
+          'Mesocyclone'],
+  frost: ['Vatnajokull', 'Langjokull', 'Hofsjokull', 'Myrdalsjokull', 'Drangajokull',
+          'Skaftafell', 'Ilulissat', 'Sermeq', 'Aletsch', 'Jostedal', 'Briksdal',
+          'Svartisen', 'Folgefonna', 'Nigardsbreen'],
+  vapor: ['Sirocco', 'Mistral', 'Chinook', 'Zephyr', 'Khamsin', 'Bora', 'Levanter',
+          'Harmattan', 'Williwaw', 'Haboob', 'Foehn', 'Simoom', 'Buran', 'Etesian',
+          'Pampero', 'Tramontane', 'Libeccio', 'Gregale'],
+};
+const POOL_THEME = {ember: 'volcanoes', volt: 'storms', frost: 'glaciers', vapor: 'winds'};
+
 // ---- local state ------------------------------------------------------------
 let myName = localStorage.getItem('cb_name') || '';
 let myColor = localStorage.getItem('cb_color') || 'ember';
+let nameIsGenerated = false;   // false once the player types their own
 let room = '';
 let token = '';
 let view = null;         // the redacted blob from the server
@@ -870,6 +903,32 @@ function startPolling() {
 }
 
 // ---- joining ----------------------------------------------------------------
+/**
+ * Drops a fresh name from the current suit's pool into the field. Avoids
+ * handing back the name already showing, so the button always visibly does
+ * something.
+ */
+function rollName() {
+  const pool = NAME_POOLS[myColor] || NAME_POOLS.ember;
+  const current = ($('nameIn').value || '').trim();
+  let pick = pool[Math.floor(Math.random() * pool.length)];
+  for (let i = 0; i < 12 && pick === current && pool.length > 1; i++) {
+    pick = pool[Math.floor(Math.random() * pool.length)];
+  }
+  $('nameIn').value = pick;
+  myName = pick;
+  nameIsGenerated = true;
+  updateNameHint();
+}
+
+function updateNameHint() {
+  const el = $('nameHint');
+  if (!el) return;
+  el.textContent = nameIsGenerated
+    ? COLOR_NAME[myColor] + ' names are ' + POOL_THEME[myColor] + '. Roll again, or type your own.'
+    : 'Or hit Roll for a random one.';
+}
+
 function readIdentity() {
   myName = ($('nameIn').value || '').trim().slice(0, 14);
   if (!myName) { alert('Pick a name first.'); return false; }
@@ -901,13 +960,23 @@ async function enterRoom(code) {
 
 // ---- wiring -----------------------------------------------------------------
 $('nameIn').value = myName;
+$('nameIn').oninput = () => { nameIsGenerated = false; updateNameHint(); };
+$('rollBtn').onclick = rollName;
+
 document.querySelectorAll('.swatch').forEach(sw => {
   sw.classList.toggle('sel', sw.dataset.c === myColor);
   sw.onclick = () => {
     myColor = sw.dataset.c;
     document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('sel', s === sw));
+    // A rolled name belongs to its suit, so it follows the colour. A name the
+    // player typed is theirs, and is left alone.
+    if (nameIsGenerated) rollName(); else updateNameHint();
   };
 });
+
+// First visit gets a name handed to them rather than an empty box; a returning
+// player keeps whatever they used last.
+if (myName) updateNameHint(); else rollName();
 
 $('createBtn').onclick = async function () {
   if (!readIdentity()) return;
