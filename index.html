@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Card Blast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CARD BLAST — a launcher-driven shedding game for phones.
+   Fresh look: near-black table, four neon suits, chunky cards.
+   Mobile first; the hand scrolls sideways, everything else stacks.
+   ============================================================ */
+
+:root{
+  --bg:#0b0d12;
+  --panel:#151a24;
+  --panel-2:#1c2331;
+  --line:#2a3344;
+  --text:#e8ecf4;
+  --muted:#8b95a8;
+
+  --ember:#ff4b3e;
+  --volt:#b8ff2b;
+  --frost:#2fd9ff;
+  --vapor:#b96bff;
+
+  --ok:#3ddc84;
+  --warn:#ffc93c;
+
+  --r:14px;
+  --hand-h:150px;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #1a2740 0%, transparent 60%),
+    radial-gradient(800px 500px at 100% 100%, #241a35 0%, transparent 55%),
+    var(--bg);
+  background-attachment:fixed;
+  color:var(--text);
+  font-family:'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size:15px;
+  line-height:1.45;
+  overscroll-behavior:none;
+}
+
+/* ---------- shared chrome ---------- */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:40;
+  background:rgba(11,13,18,.82);backdrop-filter:blur(10px);
+}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.02em}
+.brand .spark{
+  width:26px;height:26px;border-radius:8px;flex:none;
+  background:linear-gradient(135deg,var(--ember),var(--vapor));
+  box-shadow:0 0 18px rgba(255,75,62,.45);
+  display:grid;place-items:center;font-size:14px;
+}
+.brand b{font-size:16px}
+.brand span{color:var(--muted);font-weight:500;font-size:12px}
+#connStatus{font-size:12px;color:var(--warn);text-align:right;min-height:1em}
+
+.screen{display:none;padding:16px 14px 28px;max-width:820px;margin:0 auto}
+.screen.on{display:block}
+
+h1{font-size:clamp(30px,9vw,52px);line-height:1;margin:18px 0 6px;letter-spacing:-.02em}
+h1 .blast{
+  background:linear-gradient(100deg,var(--ember),var(--vapor) 55%,var(--frost));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+h2{font-size:19px;margin:0 0 10px}
+.lede{color:var(--muted);margin:0 0 22px;max-width:44ch}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px;margin-bottom:14px}
+label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:6px;font-weight:700}
+
+input[type=text]{
+  width:100%;padding:13px 14px;border-radius:11px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--text);font:inherit;font-weight:700;
+}
+input[type=text]:focus{outline:none;border-color:var(--frost);box-shadow:0 0 0 3px rgba(47,217,255,.16)}
+input.code{text-transform:uppercase;letter-spacing:.14em;text-align:center;font-size:19px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:13px 18px;border-radius:11px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--text);font:inherit;font-weight:700;
+  cursor:pointer;transition:transform .08s ease,filter .15s ease;width:100%;
+}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:linear-gradient(135deg,var(--ember),#ff7a3d);border-color:transparent;color:#1a0d0a}
+.btn.go{background:linear-gradient(135deg,var(--volt),#5fe08a);border-color:transparent;color:#0d1a08}
+.btn.ghost{background:transparent}
+.btn.sm{padding:9px 12px;font-size:13px;width:auto}
+.row{display:flex;gap:10px;align-items:center}
+.sep{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;margin:16px 0;text-transform:uppercase;letter-spacing:.1em}
+.sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ---------- suit swatches ---------- */
+.swatches{display:flex;gap:9px}
+.swatch{
+  flex:1;height:44px;border-radius:11px;border:2px solid transparent;cursor:pointer;
+  position:relative;transition:transform .1s ease;
+}
+.swatch:active{transform:scale(.96)}
+.swatch[data-c=ember]{background:var(--ember)}
+.swatch[data-c=volt]{background:var(--volt)}
+.swatch[data-c=frost]{background:var(--frost)}
+.swatch[data-c=vapor]{background:var(--vapor)}
+.swatch.sel{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.16)}
+
+/* ---------- lobby ---------- */
+.codebox{
+  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  background:var(--panel-2);border:1px dashed var(--line);border-radius:12px;padding:14px;margin-bottom:12px;
+}
+#lobbyCode{font-size:26px;font-weight:700;letter-spacing:.16em}
+.plist{display:flex;flex-direction:column;gap:8px}
+.pchip{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel-2);border-radius:11px;border:1px solid var(--line)}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.pchip .nm{font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+
+.toggles{display:grid;grid-template-columns:1fr;gap:8px}
+.tg{display:flex;gap:11px;align-items:flex-start;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--panel-2);cursor:pointer}
+.tg input{margin:2px 0 0;width:19px;height:19px;flex:none;accent-color:var(--volt)}
+.tg .t{font-weight:700;font-size:14px}
+.tg .d{color:var(--muted);font-size:12.5px;line-height:1.35}
+.tg.locked{opacity:.6;cursor:default}
+
+/* ---------- game table ---------- */
+#screen-game{max-width:900px;padding-bottom:calc(var(--hand-h) + 74px)}
+.seats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;scrollbar-width:none}
+.seats::-webkit-scrollbar{display:none}
+.seat{
+  flex:none;min-width:104px;padding:9px 11px;border-radius:12px;
+  background:var(--panel);border:1px solid var(--line);position:relative;
+}
+.seat.active{border-color:var(--volt);box-shadow:0 0 0 2px rgba(184,255,43,.2), 0 0 22px rgba(184,255,43,.14)}
+.seat.me{background:var(--panel-2)}
+.seat .nm{font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.seat .cnt{font-size:12px;color:var(--muted)}
+.seat .cnt b{color:var(--text);font-size:16px}
+.seat .flag{position:absolute;top:-8px;right:-6px;font-size:11px;font-weight:700;background:var(--ember);color:#fff;border-radius:20px;padding:2px 7px}
+
+.table{
+  display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap;
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 14px;margin-bottom:12px;
+  position:relative;overflow:hidden;
+}
+.pile{display:flex;flex-direction:column;align-items:center;gap:7px;z-index:1}
+.pile .cap{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+
+/* the launcher */
+.launcher{display:flex;flex-direction:column;align-items:center;gap:8px;z-index:1}
+.barrel{
+  width:112px;height:66px;border-radius:12px;position:relative;
+  background:linear-gradient(180deg,#2b3448,#161d29);
+  border:1px solid var(--line);
+  display:grid;place-items:center;overflow:hidden;
+}
+.barrel .slot{width:76px;height:9px;border-radius:6px;background:#0a0d14;box-shadow:inset 0 2px 5px rgba(0,0,0,.9)}
+.barrel .lit{position:absolute;bottom:7px;width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.barrel.hot .lit{background:var(--ember);box-shadow:0 0 12px var(--ember)}
+.barrel.fire{animation:kick .32s ease}
+@keyframes kick{0%{transform:translateY(0)}30%{transform:translateY(6px) scale(.97)}100%{transform:translateY(0)}}
+.pressbtn{
+  width:88px;height:88px;border-radius:50%;border:none;cursor:pointer;
+  background:radial-gradient(circle at 38% 32%, #ff8b7a, var(--ember) 55%, #a81f16);
+  box-shadow:0 6px 0 #7c1610, 0 10px 26px rgba(255,75,62,.36);
+  color:#fff;font:inherit;font-weight:700;font-size:13px;letter-spacing:.06em;
+  transition:transform .07s ease, box-shadow .07s ease;
+}
+.pressbtn:active{transform:translateY(5px);box-shadow:0 1px 0 #7c1610, 0 4px 14px rgba(255,75,62,.3)}
+.pressbtn:disabled{filter:grayscale(.7) brightness(.6);cursor:not-allowed;box-shadow:0 6px 0 #3a2320}
+.pressnote{font-size:12px;color:var(--muted);text-align:center;max-width:130px;min-height:1.2em}
+
+/* cards */
+.card{
+  width:74px;height:106px;border-radius:12px;flex:none;position:relative;
+  display:grid;place-items:center;cursor:default;user-select:none;
+  font-weight:700;color:#0c0f16;
+  box-shadow:0 6px 16px rgba(0,0,0,.45);
+  border:2px solid rgba(255,255,255,.16);
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.card .big{font-size:30px;line-height:1;text-align:center;padding:0 4px}
+.card .big.word{font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;line-height:1.12}
+.card .pip{position:absolute;font-size:10px;font-weight:700;opacity:.8}
+.card .pip.tl{top:5px;left:7px}
+.card .pip.br{bottom:5px;right:7px;transform:rotate(180deg)}
+.card[data-c=ember]{background:linear-gradient(160deg,#ff6b5e,var(--ember))}
+.card[data-c=volt]{background:linear-gradient(160deg,#d4ff6e,var(--volt))}
+.card[data-c=frost]{background:linear-gradient(160deg,#7ae8ff,var(--frost))}
+.card[data-c=vapor]{background:linear-gradient(160deg,#d3a2ff,var(--vapor))}
+.card[data-c=wild]{
+  background:conic-gradient(from 210deg,var(--ember),var(--vapor),var(--frost),var(--volt),var(--ember));
+  color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);
+}
+.card.back{
+  background:repeating-linear-gradient(45deg,#1e2637 0 7px,#171e2c 7px 14px);
+  border-color:var(--line);color:var(--muted);
+}
+.card.mini{width:44px;height:63px}
+.card.mini .big{font-size:18px}
+.card.mini .big.word{font-size:8px}
+.card.mini .pip{display:none}
+
+/* my hand */
+.handbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:35;
+  background:rgba(13,16,23,.94);backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+}
+.handhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.turnpill{font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:20px;background:var(--panel-2);border:1px solid var(--line)}
+.turnpill.mine{background:linear-gradient(135deg,var(--volt),#5fe08a);color:#0d1a08;border-color:transparent}
+.hand{display:flex;gap:7px;overflow-x:auto;padding:5px 2px 9px;min-height:var(--hand-h);align-items:flex-start;scrollbar-width:thin}
+.hand .card{cursor:pointer}
+.hand .card.playable:hover{transform:translateY(-9px)}
+.hand .card.dead{filter:grayscale(.72) brightness(.52);cursor:not-allowed}
+
+/* log */
+.log{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;max-height:132px;overflow-y:auto;font-size:13px}
+.log div{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.035);color:var(--muted)}
+.log div:last-child{border-bottom:none}
+.log b{color:var(--text)}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(6,8,12,.78);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:18px}
+.modal.on{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;max-width:440px;width:100%;max-height:86vh;overflow-y:auto}
+.sheet h3{margin:0 0 4px;font-size:19px}
+.sheet p{margin:0 0 14px;color:var(--muted);font-size:13.5px}
+.choices{display:flex;flex-direction:column;gap:8px}
+.cardrow{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+
+.banner{
+  border-radius:12px;padding:11px 13px;margin-bottom:12px;font-weight:700;font-size:14px;
+  border:1px solid transparent;display:flex;align-items:center;gap:9px;
+}
+.banner.attack{background:rgba(255,75,62,.14);border-color:rgba(255,75,62,.4);color:#ffb3ac}
+.banner.info{background:rgba(47,217,255,.1);border-color:rgba(47,217,255,.3);color:#a9ecff}
+
+.shake{animation:shake .4s ease}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-7px)}40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}80%{transform:translateX(3px)}
+}
+.win{text-align:center;padding:30px 10px}
+.win .trophy{font-size:56px}
+.muted{color:var(--muted);font-size:13px}
+.warnbox{background:rgba(255,201,60,.09);border:1px solid rgba(255,201,60,.28);color:#ffdd8a;border-radius:11px;padding:11px 13px;font-size:12.5px;margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="spark">&#128165;</div>
+    <div><b>CARD BLAST</b><br><span>press your luck</span></div>
+  </div>
+  <div id="connStatus"></div>
+</div>
+
+<!-- ============ HOME ============ -->
+<section id="screen-home" class="screen on">
+  <h1>Shed your hand.<br>Survive the <span class="blast">blaster</span>.</h1>
+  <p class="lede">Match colour or number to dump cards. Stuck? Hit the launcher &mdash; it might spit out nothing, or it might bury you. Everyone plays on their own phone.</p>
+
+  <div class="panel">
+    <label for="nameIn">Your name</label>
+    <input type="text" id="nameIn" maxlength="14" placeholder="e.g. Daniel" autocomplete="nickname">
+    <div style="height:14px"></div>
+    <label>Your colour</label>
+    <div class="swatches" id="swatches">
+      <div class="swatch sel" data-c="ember"></div>
+      <div class="swatch" data-c="volt"></div>
+      <div class="swatch" data-c="frost"></div>
+      <div class="swatch" data-c="vapor"></div>
+    </div>
+  </div>
+
+  <button class="btn primary" id="createBtn">Start a new room</button>
+  <div class="sep">or join one</div>
+  <div class="panel">
+    <label for="codeIn">Room code</label>
+    <input type="text" id="codeIn" class="code" maxlength="12" placeholder="ABC123" autocomplete="off" autocapitalize="characters">
+    <div style="height:10px"></div>
+    <button class="btn" id="joinBtn">Join room</button>
+  </div>
+</section>
+
+<!-- ============ LOBBY ============ -->
+<section id="screen-lobby" class="screen">
+  <h2>Room code</h2>
+  <div class="codebox">
+    <span id="lobbyCode">------</span>
+    <button class="btn sm" id="copyCodeBtn">Copy</button>
+    <button class="btn sm" id="shareBtn">Share link</button>
+  </div>
+
+  <div class="panel">
+    <label>Players <span id="pcount" style="color:var(--text)"></span></label>
+    <div class="plist" id="plist"></div>
+  </div>
+
+  <div class="panel">
+    <label>Deck &mdash; extra cards <span class="tag" id="hostOnlyNote"></span></label>
+    <div class="toggles" id="toggles"></div>
+  </div>
+
+  <button class="btn go" id="startBtn">Deal the cards</button>
+  <p class="muted" id="lobbyHint" style="text-align:center;margin-top:10px"></p>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="screen-game" class="screen">
+  <div class="seats" id="seats"></div>
+  <div id="banner"></div>
+
+  <div class="table" id="tableEl">
+    <div class="pile">
+      <div class="cap">In play</div>
+      <div id="discardSlot"></div>
+      <div class="cap" id="colorCap">&mdash;</div>
+    </div>
+    <div class="launcher">
+      <div class="barrel" id="barrel"><div class="slot"></div><div class="lit"></div></div>
+      <button class="pressbtn" id="pressBtn">PRESS</button>
+      <div class="pressnote" id="pressNote"></div>
+    </div>
+  </div>
+
+  <div class="log" id="log"></div>
+</section>
+
+<!-- ============ GAME OVER ============ -->
+<section id="screen-over" class="screen">
+  <div class="win">
+    <div class="trophy">&#127942;</div>
+    <h1 id="winName" style="font-size:34px">&mdash;</h1>
+    <p class="lede" style="margin:6px auto 22px">cleared their hand first</p>
+    <button class="btn go" id="rematchBtn">Deal again</button>
+    <p class="muted" id="rematchHint" style="margin-top:10px"></p>
+  </div>
+</section>
+
+<!-- fixed hand bar -->
+<div class="handbar" id="handbar" style="display:none">
+  <div class="handhead">
+    <div class="turnpill" id="turnPill">&mdash;</div>
+    <button class="btn sm ghost" id="catchBtn" style="display:none">Catch!</button>
+  </div>
+  <div class="hand" id="hand"></div>
+</div>
+
+<!-- modal -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h3 id="mTitle">&mdash;</h3>
+    <p id="mBody"></p>
+    <div class="choices" id="mChoices"></div>
+    <div style="height:10px"></div>
+    <button class="btn ghost" id="mCancel">Cancel</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   CARD BLAST — client
+   ----------------------------------------------------------------------------
+   This file knows how to DRAW the game and how to ASK for a move. It does not
+   know the rules, does not hold the deck, and cannot see anyone else's cards —
+   all of that lives in lib/engine.js behind /api/room, deliberately, so that a
+   player with devtools open has nothing interesting to find.
+
+   What arrives from the server is a redacted "view": your hand in full, every
+   other hand as a count, the draw pile as a length, and a list of which of
+   your cards are legal right now. What goes back is an intent — "play c37 on
+   Bob" — which the server re-validates from scratch. If you edit anything in
+   here, the worst you can do is confuse your own screen.
+   ============================================================================ */
+
+// ---- display metadata -------------------------------------------------------
+// Names and rules text for the cards. The server has its own copy of which
+// kinds exist; this table is only about how they look and read.
+const COLORS = ['ember', 'volt', 'frost', 'vapor'];
+const COLOR_NAME = {ember: 'Ember', volt: 'Volt', frost: 'Frost', vapor: 'Vapor'};
+const COLOR_HEX = {ember: '#ff4b3e', volt: '#b8ff2b', frost: '#2fd9ff', vapor: '#b96bff'};
+
+const FACE = {
+  skip: 'SKIP', rev: 'REVERSE', hit2: 'HIT 2', discardall: 'DISCARD ALL',
+  snipe: 'SNIPE', mirror: 'MIRROR', overload: 'OVERLOAD', peek: 'PEEK',
+  gift: 'GIFT', twin: 'TWIN',
+  wild: 'WILD', wildfire: 'WILD HIT FIRE', trade: 'TRADE HANDS',
+  scramble: 'SCRAMBLE', chain: 'CHAIN REACTION',
+};
+const PIP = {
+  skip: 'X', rev: '<>', hit2: '+2', discardall: 'ALL', snipe: '->', mirror: '<|',
+  overload: 'x2', peek: '()', gift: '->', twin: '2x',
+  wild: 'W', wildfire: '!!', trade: '<>', scramble: '~', chain: '*',
+};
+const DESC = {
+  snipe: 'Pick ANY player. They press the launcher once.',
+  mirror: 'Bounce an incoming attack back at whoever sent it, plus one press. No attack pending? It reverses direction.',
+  overload: 'The next launch fires DOUBLE. Whoever presses next eats it.',
+  peek: 'Look at any player’s hand.',
+  gift: 'Hand one card of your choice to any player.',
+  twin: 'Take another turn immediately.',
+  trade: 'Swap your entire hand with any player.',
+  scramble: 'Every hand shifts one seat in the direction of play.',
+  chain: 'Every other player presses the launcher once.',
+};
+const OPTIONAL = ['snipe', 'mirror', 'overload', 'peek', 'gift', 'twin', 'trade', 'scramble', 'chain'];
+
+// Which cards need the player to answer something before the move is sent.
+// The server enforces all of this again; here it just drives the prompts.
+const NEEDS_COLOR = ['wild', 'wildfire'];
+const NEEDS_TARGET = ['snipe', 'peek', 'gift', 'trade'];
+
+// ---- local state ------------------------------------------------------------
+let myName = localStorage.getItem('cb_name') || '';
+let myColor = localStorage.getItem('cb_color') || 'ember';
+let room = '';
+let token = '';
+let view = null;         // the redacted blob from the server
+let pollTimer = null;
+let busy = false;
+let flashMsg = '';
+let lastRenderedV = -1;
+
+const $ = id => document.getElementById(id);
+
+// ---- networking -------------------------------------------------------------
+function setConnStatus(ok) {
+  const el = $('connStatus');
+  if (el) el.textContent = ok ? '' : '⚠️ Connection trouble — retrying...';
+}
+
+/**
+ * One call to the room API. The token goes in a header, never the URL, so it
+ * does not end up in browser history or a shared link.
+ */
+async function api(action, opts) {
+  opts = opts || {};
+  const url = '/api/room?action=' + encodeURIComponent(action) + (room ? '&room=' + encodeURIComponent(room) : '');
+  const headers = {};
+  if (token) headers['x-cb-token'] = token;
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(url, {
+    method: opts.method || (opts.body ? 'POST' : 'GET'),
+    headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  if (!res.ok) {
+    const err = new Error((data && data.error) || ('HTTP ' + res.status));
+    err.status = res.status;
+    throw err;
+  }
+  setConnStatus(true);
+  return data || {};
+}
+
+function applyView(v, force) {
+  if (!v) return;
+  view = v;
+  if (force || v.v !== lastRenderedV) { lastRenderedV = v.v; render(); }
+}
+
+function flash(msg) {
+  flashMsg = msg;
+  render();
+  setTimeout(() => { if (flashMsg === msg) { flashMsg = ''; render(); } }, 3200);
+}
+
+// ---- prompts ----------------------------------------------------------------
+let modalResolve = null;
+
+function openModal(title, body, choices, opts) {
+  return new Promise(resolve => {
+    modalResolve = resolve;
+    $('mTitle').textContent = title;
+    $('mBody').textContent = body || '';
+    const box = $('mChoices');
+    box.innerHTML = '';
+    box.className = (opts && opts.row) ? 'cardrow' : 'choices';
+    choices.forEach(ch => {
+      const b = document.createElement('button');
+      b.className = 'btn' + (ch.primary ? ' go' : '');
+      if (ch.node) { b.style.padding = '6px'; b.style.width = 'auto'; b.appendChild(ch.node); }
+      else b.textContent = ch.label;
+      b.onclick = () => finishModal(ch.value);
+      box.appendChild(b);
+    });
+    $('mCancel').style.display = (opts && opts.noCancel) ? 'none' : '';
+    $('mCancel').textContent = 'Cancel';
+    $('modal').classList.add('on');
+  });
+}
+
+function finishModal(value) {
+  $('modal').classList.remove('on');
+  const r = modalResolve;
+  modalResolve = null;
+  if (r) r(value);
+}
+$('mCancel').onclick = () => finishModal(null);
+
+const askColor = () => openModal('Pick a colour', 'What colour is in play now?',
+  COLORS.map(c => ({label: COLOR_NAME[c], value: c})), {noCancel: true});
+
+const askPlayer = (title, body) => openModal(title, body,
+  view.players.filter(p => p.id !== view.you)
+    .map(p => ({label: p.name + '  (' + p.count + ' card' + (p.count === 1 ? '' : 's') + ')', value: p.id})));
+
+const askOwnCard = (title, body, cards) => openModal(title, body,
+  cards.map(c => ({node: cardEl(c, {mini: true}), value: c.id})), {row: true});
+
+const askBlast = () => openModal('One card left!',
+  'Call it and you are safe. Stay quiet and someone can catch you — that costs you two presses.',
+  [{label: '\u{1F4A5} CALL BLAST!', value: true, primary: true}, {label: 'Say nothing…', value: false}],
+  {noCancel: true});
+
+// ---- moves ------------------------------------------------------------------
+/**
+ * How many cards would be left in hand after playing this card? Only used to
+ * decide whether to show the BLAST prompt — if it guesses wrong the server
+ * simply flags the player as uncalled, which is recoverable.
+ */
+function remainingAfter(card) {
+  const hand = view.hand;
+  if (card.k === 'discardall') return hand.filter(c => c.c !== card.c).length;
+  if (card.k === 'gift') return Math.max(0, hand.length - 2);
+  return hand.length - 1;
+}
+
+async function tryPlay(card) {
+  if (busy || !view.yourTurn) return;
+  const move = {type: 'play', cardId: card.id};
+
+  if (NEEDS_COLOR.indexOf(card.k) !== -1) {
+    const c = await askColor();
+    if (!c) return;
+    move.color = c;
+  }
+
+  const bareGift = card.k === 'gift' && view.hand.length === 1;
+  if (NEEDS_TARGET.indexOf(card.k) !== -1 && !bareGift) {
+    const labels = {
+      snipe: ['Snipe who?', 'They press the launcher once, right now.'],
+      peek: ['Peek at whose hand?', 'Only you will see it.'],
+      gift: ['Give a card to who?', 'You pick the card next.'],
+      trade: ['Swap hands with who?', 'You get their whole hand, they get yours.'],
+    }[card.k];
+    const t = await askPlayer(labels[0], labels[1]);
+    if (!t) return;
+    move.target = t;
+
+    if (card.k === 'gift') {
+      const rest = view.hand.filter(c => c.id !== card.id);
+      const g = await askOwnCard('Give which card?', 'It goes straight into their hand.', rest);
+      if (!g) return;
+      move.giftCardId = g;
+    }
+  }
+
+  if (remainingAfter(card) === 1) {
+    const called = await askBlast();
+    move.callBlast = !!called;
+  }
+
+  await send(move);
+}
+
+async function send(move) {
+  if (busy) return;
+  busy = true;
+  render();
+  try {
+    const out = await api('move', {body: {move}});
+    applyView(out.view, true);
+    if (move.type === 'press' || move.type === 'catch') kickBarrel();
+    if (out.peek) showPeek(out.peek);
+  } catch (e) {
+    if (e.status === 409) { await refresh(); flash('Someone moved first — try again.'); }
+    else flash(e.message || 'That move did not go through.');
+    if (e.status !== 409) await refresh();
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+async function refresh() {
+  try { const out = await api('state'); applyView(out.view, true); }
+  catch (e) { setConnStatus(false); }
+}
+
+// ---- rendering --------------------------------------------------------------
+function cardEl(card, opts) {
+  const mini = !!(opts && opts.mini);
+  const d = document.createElement('div');
+  d.className = 'card' + (mini ? ' mini' : '');
+  d.dataset.c = card.c || 'wild';
+  const isNum = card.k === 'num';
+  const big = document.createElement('div');
+  big.className = 'big' + (isNum ? '' : ' word');
+  big.textContent = isNum ? String(card.n) : (FACE[card.k] || card.k);
+  d.appendChild(big);
+  if (!mini) {
+    const pip = isNum ? String(card.n) : (PIP[card.k] || '');
+    ['tl', 'br'].forEach(pos => {
+      const s = document.createElement('div');
+      s.className = 'pip ' + pos;
+      s.textContent = pip;
+      d.appendChild(s);
+    });
+  }
+  return d;
+}
+
+function cardBack() {
+  const d = document.createElement('div');
+  d.className = 'card back mini';
+  const b = document.createElement('div');
+  b.className = 'big word';
+  b.textContent = '?';
+  d.appendChild(b);
+  return d;
+}
+
+function kickBarrel() {
+  const b = $('barrel');
+  b.classList.remove('fire'); void b.offsetWidth; b.classList.add('fire');
+  const t = $('tableEl');
+  t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
+}
+
+function showPeek(peek) {
+  $('mTitle').textContent = peek.name + '’s hand';
+  $('mBody').textContent = peek.hand.length + ' cards. Only you can see this.';
+  const box = $('mChoices');
+  box.className = 'cardrow';
+  box.innerHTML = '';
+  peek.hand.forEach(c => box.appendChild(cardEl(c, {mini: true})));
+  $('mCancel').style.display = '';
+  $('mCancel').textContent = 'Done';
+  modalResolve = null;
+  $('modal').classList.add('on');
+}
+
+function renderLobby() {
+  $('lobbyCode').textContent = room || '------';
+  const ps = view ? view.players : [];
+  $('pcount').textContent = ps.length ? '(' + ps.length + ')' : '';
+  const list = $('plist');
+  list.innerHTML = '';
+  ps.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'pchip';
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.background = COLOR_HEX[p.color] || '#888';
+    const nm = document.createElement('div');
+    nm.className = 'nm';
+    nm.textContent = p.name + (p.id === view.you ? ' (you)' : '');
+    row.appendChild(dot); row.appendChild(nm);
+    if (p.host) { const t = document.createElement('div'); t.className = 'tag'; t.textContent = 'host'; row.appendChild(t); }
+    list.appendChild(row);
+  });
+
+  const host = view && view.isHost;
+  $('hostOnlyNote').textContent = host ? '' : '— host decides';
+  $('startBtn').style.display = host ? '' : 'none';
+  $('startBtn').disabled = ps.length < 2 || busy;
+  $('lobbyHint').textContent = host
+    ? (ps.length < 2 ? 'Waiting for at least one more player…' : 'Everyone in? Deal when ready.')
+    : 'Waiting for ' + ((ps[0] && ps[0].name) || 'the host') + ' to deal…';
+  renderToggles();
+}
+
+function renderToggles() {
+  const host = view && view.isHost;
+  const opts = (view && view.opts) || {};
+  const box = $('toggles');
+  box.innerHTML = '';
+  OPTIONAL.forEach(k => {
+    const lab = document.createElement('label');
+    lab.className = 'tg' + (host ? '' : ' locked');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = opts[k] !== false;
+    cb.disabled = !host;
+    cb.onchange = async () => {
+      const next = Object.assign({}, view.opts);
+      next[k] = cb.checked;
+      try { const out = await api('opts', {body: {opts: next}}); applyView(out.view, true); }
+      catch (e) { flash(e.message); await refresh(); }
+    };
+    const txt = document.createElement('div');
+    const t = document.createElement('div'); t.className = 't'; t.textContent = FACE[k];
+    const d = document.createElement('div'); d.className = 'd'; d.textContent = DESC[k];
+    txt.appendChild(t); txt.appendChild(d);
+    lab.appendChild(cb); lab.appendChild(txt);
+    box.appendChild(lab);
+  });
+}
+
+function renderSeats() {
+  const box = $('seats');
+  box.innerHTML = '';
+  view.players.forEach(p => {
+    const s = document.createElement('div');
+    s.className = 'seat' + (p.id === view.turnId ? ' active' : '') + (p.id === view.you ? ' me' : '');
+    const nm = document.createElement('div');
+    nm.className = 'nm';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = COLOR_HEX[p.color] || '#888';
+    nm.appendChild(dot);
+    nm.appendChild(document.createTextNode(p.name + (p.id === view.you ? ' (you)' : '')));
+    const cnt = document.createElement('div');
+    cnt.className = 'cnt';
+    cnt.innerHTML = '<b>' + p.count + '</b> cards';
+    s.appendChild(nm); s.appendChild(cnt);
+    if (p.uncalled) {
+      const f = document.createElement('div');
+      f.className = 'flag';
+      f.textContent = 'quiet!';
+      s.appendChild(f);
+    }
+    box.appendChild(s);
+  });
+}
+
+function renderBanner() {
+  const b = $('banner');
+  b.innerHTML = '';
+  if (flashMsg) {
+    const d = document.createElement('div');
+    d.className = 'banner info';
+    d.textContent = flashMsg;
+    b.appendChild(d);
+  }
+  if (!view.pending) return;
+  const div = document.createElement('div');
+  div.className = 'banner attack';
+  const who = view.players.find(p => p.id === view.turnId);
+  const what = view.pending.kind === 'fire' ? 'must press until the launcher fires' : 'owes ' + view.pending.n + ' presses';
+  div.textContent = (view.yourTurn ? 'You ' : (who ? who.name : 'Someone') + ' ') + what + '. Stack a Hit 2, Mirror it, or take it.';
+  b.appendChild(div);
+}
+
+function renderHand() {
+  const box = $('hand');
+  box.innerHTML = '';
+  const playable = view.playable || [];
+  view.hand.forEach(card => {
+    const el = cardEl(card);
+    const ok = view.yourTurn && !busy && playable.indexOf(card.id) !== -1;
+    el.classList.add(ok ? 'playable' : 'dead');
+    if (ok) el.onclick = () => tryPlay(card);
+    box.appendChild(el);
+  });
+  if (!view.hand.length) {
+    const p = document.createElement('div');
+    p.className = 'muted';
+    p.textContent = view.you ? 'No cards left.' : 'Watching this round — you are not seated.';
+    box.appendChild(p);
+  }
+}
+
+function render() {
+  if (!view) return;
+
+  if (view.phase === 'lobby') {
+    showScreen('screen-lobby');
+    renderLobby();
+    return;
+  }
+
+  if (view.phase === 'over') {
+    showScreen('screen-over');
+    const w = view.players.find(p => p.id === view.winner);
+    $('winName').textContent = (w ? w.name : 'Someone') + ' wins';
+    $('rematchBtn').style.display = view.isHost ? '' : 'none';
+    $('rematchBtn').disabled = busy;
+    $('rematchHint').textContent = view.isHost ? '' : 'Waiting for the host to deal again…';
+    return;
+  }
+
+  showScreen('screen-game');
+  $('handbar').style.display = '';
+
+  renderSeats();
+  renderBanner();
+
+  const slot = $('discardSlot');
+  slot.innerHTML = '';
+  slot.appendChild(cardEl(view.top));
+  $('colorCap').textContent = COLOR_NAME[view.color] + ' in play';
+  $('colorCap').style.color = COLOR_HEX[view.color];
+
+  const mine = view.yourTurn;
+  $('pressBtn').disabled = !mine || busy;
+  $('barrel').classList.toggle('hot', !!view.overload);
+  let note = '';
+  if (!mine) {
+    const who = view.players.find(p => p.id === view.turnId);
+    note = 'Waiting for ' + (who ? who.name : 'the next player') + '…';
+  } else if (view.pending) {
+    note = view.pending.kind === 'fire' ? 'Press until it fires' : 'Take ' + view.pending.n + ' presses';
+  } else note = 'Stuck? Press it.';
+  if (view.overload && mine) note += ' ⚠️ overloaded';
+  $('pressNote').textContent = note;
+
+  const pill = $('turnPill');
+  const who = view.players.find(p => p.id === view.turnId);
+  pill.textContent = mine ? 'Your turn' : ((who ? who.name : '—') + '’s turn');
+  pill.className = 'turnpill' + (mine ? ' mine' : '');
+
+  const catchable = mine ? view.players.find(p => p.id !== view.you && p.uncalled && p.count === 1) : null;
+  const cb = $('catchBtn');
+  if (catchable) {
+    cb.style.display = '';
+    cb.textContent = 'Catch ' + catchable.name + '!';
+    cb.onclick = () => send({type: 'catch', target: catchable.id});
+  } else cb.style.display = 'none';
+
+  renderHand();
+
+  const lg = $('log');
+  lg.innerHTML = '';
+  (view.log || []).forEach(line => {
+    const d = document.createElement('div');
+    d.textContent = line;
+    lg.appendChild(d);
+  });
+  lg.scrollTop = lg.scrollHeight;
+}
+
+function showScreen(id) {
+  ['screen-home', 'screen-lobby', 'screen-game', 'screen-over'].forEach(s => {
+    $(s).classList.toggle('on', s === id);
+  });
+  if (id !== 'screen-game') $('handbar').style.display = 'none';
+}
+
+// ---- polling ----------------------------------------------------------------
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if (busy || modalResolve) return;    // don't yank the table out from under a prompt
+    await refresh();
+  }, 1600);
+  refresh();
+}
+
+// ---- joining ----------------------------------------------------------------
+function readIdentity() {
+  myName = ($('nameIn').value || '').trim().slice(0, 14);
+  if (!myName) { alert('Pick a name first.'); return false; }
+  localStorage.setItem('cb_name', myName);
+  localStorage.setItem('cb_color', myColor);
+  return true;
+}
+
+const tokenKey = code => 'cb_tok_' + code;
+
+async function enterRoom(code) {
+  room = code;
+  const saved = localStorage.getItem(tokenKey(code));
+  if (saved) {
+    // Returning to a room we already joined — the token still identifies us.
+    token = saved;
+    try {
+      const out = await api('state');
+      if (out.view && out.view.you) { applyView(out.view, true); startPolling(); return; }
+    } catch (e) { /* fall through and join fresh */ }
+    token = '';
+  }
+  const out = await api('join', {body: {name: myName, color: myColor}});
+  token = out.token;
+  localStorage.setItem(tokenKey(code), token);
+  applyView(out.view, true);
+  startPolling();
+}
+
+// ---- wiring -----------------------------------------------------------------
+$('nameIn').value = myName;
+document.querySelectorAll('.swatch').forEach(sw => {
+  sw.classList.toggle('sel', sw.dataset.c === myColor);
+  sw.onclick = () => {
+    myColor = sw.dataset.c;
+    document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('sel', s === sw));
+  };
+});
+
+$('createBtn').onclick = async function () {
+  if (!readIdentity()) return;
+  this.disabled = true; this.textContent = 'Creating…';
+  try {
+    const made = await api('create', {method: 'POST'});
+    await enterRoom(made.room);
+  } catch (e) {
+    alert('Could not start a room.\n\n' + (e.message || e));
+  } finally {
+    this.disabled = false; this.textContent = 'Start a new room';
+  }
+};
+
+$('joinBtn').onclick = async function () {
+  if (!readIdentity()) return;
+  const code = ($('codeIn').value || '').trim().toUpperCase();
+  if (!code) { alert('Enter the room code.'); return; }
+  this.disabled = true; this.textContent = 'Joining…';
+  try {
+    room = code;
+    const info = await api('exists');
+    if (!info.exists) throw new Error('No room with that code.');
+    await enterRoom(code);
+  } catch (e) {
+    room = '';
+    alert(e.message === 'The game has already started.'
+      ? 'That game is already under way — you cannot join mid-round.'
+      : (e.message || 'Could not join.'));
+  } finally {
+    this.disabled = false; this.textContent = 'Join room';
+  }
+};
+
+$('startBtn').onclick = async function () {
+  this.disabled = true;
+  try { const out = await api('start', {method: 'POST'}); applyView(out.view, true); }
+  catch (e) { flash(e.message); await refresh(); }
+  finally { this.disabled = false; }
+};
+
+$('rematchBtn').onclick = async function () {
+  this.disabled = true;
+  try { const out = await api('rematch', {method: 'POST'}); applyView(out.view, true); }
+  catch (e) { flash(e.message); await refresh(); }
+  finally { this.disabled = false; }
+};
+
+$('pressBtn').onclick = () => send({type: 'press'});
+
+$('copyCodeBtn').onclick = async function () {
+  const original = this.textContent;
+  try { await navigator.clipboard.writeText(room); this.textContent = 'Copied'; }
+  catch (e) {
+    const range = document.createRange();
+    range.selectNodeContents($('lobbyCode'));
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+    this.textContent = 'Tap-hold to copy';
+  }
+  setTimeout(() => { this.textContent = original; }, 2200);
+};
+
+$('shareBtn').onclick = async function () {
+  const url = location.origin + location.pathname + '?room=' + encodeURIComponent(room);
+  const original = this.textContent;
+  try {
+    if (navigator.share) { await navigator.share({title: 'Card Blast', text: 'Join my game', url}); return; }
+    await navigator.clipboard.writeText(url);
+    this.textContent = 'Link copied';
+  } catch (e) { this.textContent = 'Copy failed'; }
+  setTimeout(() => { this.textContent = original; }, 2200);
+};
+
+// Deep link: ?room=CODE prefills the code, and walks straight back in if this
+// device already has a token for that room.
+(async function boot() {
+  const qs = new URLSearchParams(location.search);
+  const code = (qs.get('room') || '').toUpperCase();
+  if (!code) return;
+  $('codeIn').value = code;
+  if (localStorage.getItem(tokenKey(code)) && myName) {
+    try { await enterRoom(code); } catch (e) { room = ''; token = ''; }
+  }
+})();
+</script>
+</body>
+</html>
