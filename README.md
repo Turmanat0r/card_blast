@@ -118,3 +118,11 @@ play the game (zero illegal proposals) while a leak check proves it carries
 nothing more. It also checks that cards are never created or destroyed, that
 the turn index stays in range, that every game terminates, and it prints the
 win spread — lopsided results across seats would mean biased turn rotation.
+
+`test/smoke.js` plays a real game against the live deployment over HTTPS —
+two players join a real room, the host deals, and it re-checks the secrecy
+guarantee on the actual wire:
+
+```sh
+node test/smoke.js
+```
