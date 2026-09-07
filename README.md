@@ -151,6 +151,39 @@ never judges a move.
 What's deliberately *not* protected: while the lobby is open, anyone with the
 room code can join. That's the point of a zero-login party game.
 
+## Breakpoints
+
+Bootstrap 5's scale, which is what most people mean by "standard breakpoints",
+plus one tier below it — Bootstrap starts at 576px and real phones go down to
+320.
+
+| Tier | From | Devices | What changes |
+|---|---|---|---|
+| xs | 320px | small phones | tighter gutters, the "Your hand" label goes |
+| — | 400px | phones | one column everywhere, stacked home screen |
+| sm | 576px | large phones, phones on their side | the two setup panels sit side by side |
+| md | 768px | tablets portrait | two-column lobby, taller table and log |
+| lg | 992px | tablets landscape, laptops | the activity log moves beside the table |
+| xl | 1200px | desktops | full 1160px content column |
+| xxl | 1400px | large desktops | roomier setup grid |
+
+Ranges are written as `max-width` "-down" queries because the desktop layout is
+the base, with `.98` ending each range just below the next tier so two never
+apply at once. The content column is `max-width: calc(1160px + 48px)` with a
+24px gutter, so it needs no breakpoint of its own.
+
+Width alone cannot tell a landscape phone from a small tablet, so two more
+queries do that job: `max-height: 540px and (orientation: landscape)` gives a
+phone on its side its screen back, and `hover: hover` keeps pointer-only
+effects off touchscreens — `:hover` latches after a tap, which would leave a
+card standing up out of the fan.
+
+Checked in a real browser rather than by reading the CSS: a headless sweep of
+70 combinations — five screens across fourteen viewports from 320×568 to
+1920×1080, portrait and landscape, at 7, 20 and 45 cards — asserting that no
+page scrolls sideways, nothing lands wider than the viewport, and no card
+escapes the hand bar.
+
 ## Deploying
 
 **Live at https://card-blast.vercel.app** — share that one. Vercel also keeps

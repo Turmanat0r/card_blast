@@ -34,7 +34,10 @@ button:disabled{cursor:not-allowed}
 .online-note::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent)}
 #connStatus{color:var(--warn);max-width:250px;text-align:right;font-size:13px}
 #connStatus:empty{display:none}
-.screen{display:none;width:100%;max-width:1160px;padding:38px 0 48px;margin:0 auto}
+/* Content column: 1160px of content plus a 24px gutter either side. Expressed
+   as a max-width rather than a breakpoint so it degrades on its own at every
+   width in between. */
+.screen{display:none;width:100%;max-width:calc(1160px + 48px);padding:38px 24px 48px;margin:0 auto}
 .screen.on{display:block}
 h1,h2,h3,.knownname,.code,.turnpill,.pressbtn{font-family:'Outfit',sans-serif}
 h1{font-size:clamp(34px,4.5vw,54px);font-weight:600;line-height:1.06;letter-spacing:-.04em;margin:0 0 14px}
@@ -212,10 +215,22 @@ input.code{text-transform:uppercase;letter-spacing:.19em;text-align:center;font-
 .hand .card .big.word{font-size:calc(var(--cw) * .152)}
 .hand .card .pip{font-size:calc(var(--cw) * .13)}
 .hand .card::before{inset:calc(var(--cw) * .1)}
-.hand .card.playable:hover,.hand .card.playable:focus-visible{--pop:-24px;z-index:60!important;box-shadow:0 14px 22px #03071373}
+.hand .card.playable:focus-visible{--pop:-24px;z-index:60!important;box-shadow:0 14px 22px #03071373}
 .hand .card.playable:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .hand .card.dead{filter:brightness(.6) saturate(.7)}
-.hand .card.dead:hover,.hand .card.dead:focus-visible{filter:brightness(.82) saturate(.85);z-index:60!important}
+.hand .card.dead:focus-visible{filter:brightness(.82) saturate(.85);z-index:60!important}
+/* Hover belongs to a mouse. On a touchscreen :hover latches after a tap, so a
+   card would stay standing up and a swatch would stay nudged. */
+@media(hover:hover){
+  .hand .card.playable:hover{--pop:-24px;z-index:60!important;box-shadow:0 14px 22px #03071373}
+  .hand .card.dead:hover{filter:brightness(.82) saturate(.85);z-index:60!important}
+}
+@media(hover:none){
+  .swatch:hover{transform:none}
+  .btn:hover:not(:disabled){background:var(--panel-2);border-color:var(--line)}
+  .btn.primary:hover:not(:disabled){background:var(--accent)}
+  .btn.go:hover:not(:disabled){background:var(--volt)}
+}
 .activity{padding:20px;background:#101a2c;border:1px solid var(--line);border-radius:24px;min-width:0}
 .activity h3{font-size:16px;margin:0 0 14px;font-weight:500}
 .log{max-height:272px;overflow-y:auto;scrollbar-width:thin;font-size:13px}
@@ -259,12 +274,58 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
 .shake{animation:shake .4s ease}
 @keyframes kick{0%,100%{transform:translateY(0)}30%{transform:translateY(5px) scale(.98)}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
-@media(min-width:1250px){.setup-grid{grid-template-columns:1fr 1.08fr}.home-intro .lede{max-width:400px}.home-intro{margin-bottom:36px}.setup-grid>.panel{padding:30px}}
-@media(max-width:1220px){.screen{padding-left:24px;padding-right:24px}}
-@media(max-width:850px){.game-layout{grid-template-columns:1fr}.activity{padding:17px 20px}.log{max-height:110px}.table{min-height:310px}.lobby-grid{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}.panel{padding:20px}.setup-grid{gap:16px}.home-intro{gap:24px}.home-intro .lede{max-width:300px;font-size:14px}.join-row{grid-template-columns:minmax(0,1fr) 110px}.join-row .btn{padding:12px}.panel-heading h2{font-size:21px}}
-@media(max-width:650px){:root{--r:20px;--hand-h:162px}.topbar{min-height:72px;padding:12px 18px;gap:10px}.brand .spark{width:34px;height:37px;font-size:24px;border-radius:10px}.brand{gap:10px}.brand b{font-size:20px}.brand span{font-size:10px}.online-note{display:none}#connStatus{max-width:160px;font-size:12px}.screen{padding:26px 18px 32px}.home-intro{display:block;margin:0 0 23px}.home-intro h1{font-size:38px}.home-intro .lede{max-width:46ch;font-size:14px;margin-top:14px}.eyebrow{margin-bottom:13px}.setup-grid,.lobby-grid{grid-template-columns:1fr;gap:16px}.panel{padding:21px}.panel-heading{margin-bottom:20px}.panel-heading h2{font-size:22px}.step{width:27px;height:27px}.colour-field{margin-top:20px}.swatch{min-height:56px}.home-footer{font-size:12px;margin-top:20px}.lobby-heading h1{font-size:32px}.lobby-grid{gap:0}.join-row{grid-template-columns:minmax(0,1fr) 115px}.game-heading{margin-bottom:10px}.game-heading h2{font-size:22px}.game-heading .tag{font-size:12px}.seat{min-width:140px;padding:11px 13px}.seats{gap:8px;margin-bottom:10px}.seat .nm{font-size:13px}.table{min-height:286px;gap:45px;padding:28px 16px 34px;border-radius:23px}.pile{gap:10px}.table .card{width:93px;height:134px}.pressbtn{width:94px;height:73px}.barrel{width:108px}.game-layout{gap:16px}.handbar{width:100%;bottom:0;border-radius:22px 22px 0 0;border-bottom:0;padding:11px 15px calc(5px + env(safe-area-inset-bottom))}.hand-title>span{font-size:15px}.hand-title{gap:9px}.turnpill{font-size:13px;padding:4px 9px}.handhead{gap:8px}.headbtns{gap:5px}.headbtns .btn{font-size:13px;padding:9px 12px;min-height:44px}.sheet{border-radius:23px}.sheetbody{padding:22px}.sheet h3{font-size:24px}.banner{font-size:13px}.win h1{font-size:29px!important}}
-@media(max-width:380px){.screen{padding-left:14px;padding-right:14px}.panel{padding:17px}.home-intro h1{font-size:34px}.swatches{gap:7px}.swatch{font-size:12px}.hand-title>span{display:none}.table{gap:28px}.limitopt .s{font-size:12px}.limits{gap:5px}.handbar{padding-left:12px;padding-right:12px}.handhead:has(#catchBtn:not([style*="none"])) .headbtns{width:100%;justify-content:flex-end}.sheetbody{padding:18px}.modal{padding:12px}.guiderow{gap:10px;padding:8px}.toggles{grid-template-columns:1fr}.guiderow{gap:11px;padding:9px}}
-@media(max-height:740px) and (min-width:651px){#screen-game{padding-top:18px}.game-heading{margin-bottom:8px}.table{min-height:275px;padding-top:24px}.handbar{bottom:8px;padding-top:10px}.seat{padding-top:10px;padding-bottom:10px}}
+/* ============================================================================
+   BREAKPOINTS - Bootstrap 5's scale, which is what most people mean by
+   "standard breakpoints", plus one tier below it.
+
+     (xs)    <  400px   small phones            iPhone SE, Galaxy A-series
+      sm    >=  576px   large phones, landscape
+      md    >=  768px   tablets portrait        iPad mini / Air / Pro 11
+      lg    >=  992px   tablets landscape, laptops
+      xl    >= 1200px   desktops
+     xxl    >= 1400px   large desktops
+
+   Bootstrap starts at 576px; real phones go down to 320, so the xs tier is an
+   addition. Ranges are written as max-width "-down" queries because the
+   desktop layout is the base here, and .98 ends the range just below the next
+   tier so two never apply at once.
+
+   Width alone cannot tell a landscape phone from a small tablet, so the height
+   and orientation queries after these do that job, and a hover query keeps
+   pointer-only effects away from touchscreens.
+   ============================================================================ */
+
+@media(min-width:1400px){.setup-grid{grid-template-columns:1fr 1.08fr}.home-intro .lede{max-width:400px}.home-intro{margin-bottom:36px}.setup-grid>.panel{padding:30px}}
+@media(max-width:991.98px){.game-layout{grid-template-columns:1fr}.activity{padding:17px 20px}.log{max-height:110px}.table{min-height:310px}.lobby-grid{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}.panel{padding:20px}.setup-grid{gap:16px}.home-intro{gap:24px}.home-intro .lede{max-width:300px;font-size:14px}.join-row{grid-template-columns:minmax(0,1fr) 110px}.join-row .btn{padding:12px}.panel-heading h2{font-size:21px}}
+@media(max-width:767.98px){:root{--r:20px;--hand-h:162px}.topbar{min-height:72px;padding:12px 18px;gap:10px}.brand .spark{width:34px;height:37px;font-size:24px;border-radius:10px}.brand{gap:10px}.brand b{font-size:20px}.brand span{font-size:10px}.online-note{display:none}#connStatus{max-width:160px;font-size:12px}.screen{padding:26px 18px 32px}.home-intro{display:block;margin:0 0 23px}.home-intro h1{font-size:38px}.home-intro .lede{max-width:46ch;font-size:14px;margin-top:14px}.eyebrow{margin-bottom:13px}.setup-grid,.lobby-grid{grid-template-columns:1fr;gap:16px}.panel{padding:21px}.panel-heading{margin-bottom:20px}.panel-heading h2{font-size:22px}.step{width:27px;height:27px}.colour-field{margin-top:20px}.swatch{min-height:56px}.home-footer{font-size:12px;margin-top:20px}.lobby-heading h1{font-size:32px}.lobby-grid{gap:0}.join-row{grid-template-columns:minmax(0,1fr) 115px}.game-heading{margin-bottom:10px}.game-heading h2{font-size:22px}.game-heading .tag{font-size:12px}.seat{min-width:140px;padding:11px 13px}.seats{gap:8px;margin-bottom:10px}.seat .nm{font-size:13px}.table{min-height:286px;gap:45px;padding:28px 16px 34px;border-radius:23px}.pile{gap:10px}.table .card{width:93px;height:134px}.pressbtn{width:94px;height:73px}.barrel{width:108px}.game-layout{gap:16px}.handbar{width:100%;bottom:0;border-radius:22px 22px 0 0;border-bottom:0;padding:11px 15px calc(5px + env(safe-area-inset-bottom))}.hand-title>span{font-size:15px}.hand-title{gap:9px}.turnpill{font-size:13px;padding:4px 9px}.handhead{gap:8px}.headbtns{gap:5px}.headbtns .btn{font-size:13px;padding:9px 12px;min-height:44px}.sheet{border-radius:23px}.sheetbody{padding:22px}.sheet h3{font-size:24px}.banner{font-size:13px}.win h1{font-size:29px!important}}
+@media(max-width:399.98px){.screen{padding-left:14px;padding-right:14px}.panel{padding:17px}.home-intro h1{font-size:34px}.swatches{gap:7px}.swatch{font-size:12px}.hand-title>span{display:none}.table{gap:28px}.limitopt .s{font-size:12px}.limits{gap:5px}.handbar{padding-left:12px;padding-right:12px}.handhead:has(#catchBtn:not([style*="none"])) .headbtns{width:100%;justify-content:flex-end}.sheetbody{padding:18px}.modal{padding:12px}.guiderow{gap:10px;padding:8px}.toggles{grid-template-columns:1fr}.guiderow{gap:11px;padding:9px}}
+/* sm - large phones, and phones on their side. There is width for the two
+   setup panels side by side, but not for the lobby: splitting that leaves the
+   knock-out row and the extras chips too narrow to read, so it stays stacked
+   until md. */
+@media(min-width:576px) and (max-width:767.98px){
+  .setup-grid{grid-template-columns:1fr 1fr;gap:16px}
+  .home-intro .lede{max-width:42ch}
+  .sheet{max-width:520px}
+  /* Half the width means the four colour names and the room code no longer
+     fit on one line beside their button. */
+  .swatch{font-size:11px}
+  .join-row{grid-template-columns:1fr;gap:8px}
+}
+
+/* md - tablets in portrait. The rules above this are shared with phones and
+   are stingier than a tablet needs: give back the log, the table and the
+   padding. */
+@media(min-width:768px) and (max-width:991.98px){
+  .panel{padding:24px}
+  .log{max-height:210px}
+  .table{min-height:360px}
+  .home-intro .lede{max-width:360px}
+  .seat{min-width:160px}
+  .sheet{max-width:560px}
+}
+
+@media(max-height:740px) and (min-width:768px){#screen-game{padding-top:18px}.game-heading{margin-bottom:8px}.table{min-height:275px;padding-top:24px}.handbar{bottom:8px;padding-top:10px}.seat{padding-top:10px;padding-bottom:10px}}
 @media(max-height:540px) and (orientation:landscape){
   .screen{padding-top:12px}
   .game-heading{margin-bottom:8px}
