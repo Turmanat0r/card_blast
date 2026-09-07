@@ -199,7 +199,9 @@ fanned hand, the card guide, the extras panel and every branch of leaving.
 
 `test/smoke.js` plays a real game against the live deployment over HTTPS —
 two players join a real room, the host deals, and it re-checks the secrecy
-guarantee on the actual wire:
+guarantee on the actual wire. It then opens a second room to walk players out
+of it, including the host mid-hand, which is the case that used to leave a
+table with nobody able to deal:
 
 ```sh
 node test/smoke.js

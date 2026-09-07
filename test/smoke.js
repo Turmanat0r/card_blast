@@ -113,6 +113,44 @@ const check = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else
   const late = await api('join', {room, body: {name: 'Carol', color: 'vapor'}});
   check('nobody can join a game in progress', late.status === 400, JSON.stringify(late.data));
 
+  // ---- leaving, in a room of its own so the game above is left intact ----
+  console.log('\nleaving a real room');
+  const made2 = await api('create', {method: 'POST'});
+  const room2 = made2.data.room;
+  console.log('  room = ' + room2);
+  const host = await api('join', {room: room2, body: {name: 'Host', color: 'ember'}});
+  const g1 = await api('join', {room: room2, body: {name: 'G1', color: 'volt'}});
+  const g2 = await api('join', {room: room2, body: {name: 'G2', color: 'frost'}});
+
+  const gone = await api('quit', {room: room2, token: g2.data.token, method: 'POST'});
+  check('a player can leave the lobby', gone.status === 200 && gone.data.ok === true, JSON.stringify(gone.data));
+
+  const twice = await api('quit', {room: room2, token: g2.data.token, method: 'POST'});
+  check('their token dies with them', twice.status === 401, String(twice.status));
+
+  const roster = await api('state', {room: room2, token: host.data.token});
+  check('the roster shrank', roster.data.view.players.length === 2, String(roster.data.view.players.length));
+
+  // The host walking out mid-hand is the case that used to strand a table:
+  // nobody left who could deal the next one.
+  await api('start', {room: room2, token: host.data.token, method: 'POST'});
+  const hostLeft = await api('quit', {room: room2, token: host.data.token, method: 'POST'});
+  check('the host can leave mid-hand', hostLeft.status === 200, String(hostLeft.status));
+
+  const after = await api('state', {room: room2, token: g1.data.token});
+  check('the hand ended with one player left', after.data.view.phase === 'over', after.data.view.phase);
+  check('the last player standing won', after.data.view.matchWinner === g1.data.playerId);
+  check('the host job passed on', after.data.view.isHost === true);
+  check('the leaver is flagged in the view',
+    after.data.view.players.find(p => p.id === host.data.playerId).quit === true);
+
+  const ghost = await api('move', {room: room2, token: host.data.token, body: {move: {type: 'press'}}});
+  check('a leaver cannot move afterwards', ghost.status === 400, String(ghost.status));
+
+  const restart = await api('rematch', {room: room2, token: g1.data.token, method: 'POST'});
+  check('a match cannot restart with only one player left',
+    restart.status === 400 && /at least two/i.test(restart.data.error || ''), JSON.stringify(restart.data));
+
   console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
   process.exit(fail ? 1 : 0);
 })();
