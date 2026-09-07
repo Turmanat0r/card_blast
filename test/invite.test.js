@@ -60,6 +60,7 @@ function boot({search = '', savedName = null} = {}) {
   const ctx = {
     console: {log() {}, warn() {}, error() {}},
     setTimeout: (fn) => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {},
+    addEventListener() {}, removeEventListener() {}, visualViewport: null,
     URLSearchParams, Math, JSON, Object, Array, String, Number, Boolean, Promise, Date, Error,
     document: {
       getElementById: id => (els[id] = els[id] || fakeEl(id)),

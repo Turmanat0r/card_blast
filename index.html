@@ -19,7 +19,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{min-height:100%;scrollbar-gutter:stable}
-body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0, #1b2945 0,transparent 58%),var(--bg);color:var(--text);font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:16px;line-height:1.5;overscroll-behavior:none}
+body{margin:0;min-height:100vh;min-height:100dvh;background:radial-gradient(ellipse at 50% 0, #1b2945 0,transparent 58%),var(--bg);color:var(--text);font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:16px;line-height:1.5;overscroll-behavior:none}
 button,input{font:inherit}
 button{touch-action:manipulation}
 button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--frost);outline-offset:4px}
@@ -144,7 +144,7 @@ input.code{text-transform:uppercase;letter-spacing:.19em;text-align:center;font-
 .gt{font-family:'Outfit',sans-serif;font-size:16px;font-weight:600;margin-bottom:3px}
 .gd{color:var(--muted);font-size:13px;line-height:1.45}
 .guidehead{margin-top:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
-#screen-game{padding-bottom:calc(var(--hand-h) + 142px + env(safe-area-inset-bottom))}
+#screen-game{padding-bottom:calc(var(--bar-h, 210px) + 28px + env(safe-area-inset-bottom))}
 .game-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:19px}
 .game-heading h2{font-size:25px}
 .seats{display:flex;gap:10px;overflow-x:auto;padding:8px 2px 12px;margin-bottom:14px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
@@ -199,14 +199,23 @@ input.code{text-transform:uppercase;letter-spacing:.19em;text-align:center;font-
 .turnpill.mine{background:#cee8791f;color:var(--volt);border-color:#cee8794d}
 .headbtns{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 #catchBtn{border-color:var(--ember);color:var(--ember)}
-.hand{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:32px 3px 10px;min-height:var(--hand-h);align-items:flex-start;scrollbar-width:thin;scrollbar-color:#5b6c88 transparent}
-/* Held like a hand of cards: --rot and --lift are set per card by renderHand,
-   the pivot sits just below the card so a rotation swings it along an arc. */
-.hand .card{cursor:pointer;transform-origin:50% 130%;transform:rotate(var(--rot,0deg)) translateY(var(--lift,0px));margin-left:var(--overlap,0px)}
-.hand .card.playable:hover,.hand .card.playable:focus-visible{transform:rotate(var(--rot,0deg)) translateY(calc(var(--lift,0px) - 14px)) scale(1.03);z-index:60!important;box-shadow:0 14px 22px #03071373}
+/* --cw/--ch (the card size) and each card's --overlap are set by layoutHand,
+   which measures the bar and shrinks and overlaps just enough to get the whole
+   hand on screen at once. No horizontal scrolling: everything is always there. */
+.hand{--cw:91px;--ch:131px;display:flex;gap:0;overflow:hidden;padding:38px 3px 16px;min-height:calc(var(--ch) + 54px);align-items:flex-start}
+.hand .card{cursor:pointer;width:var(--cw);height:var(--ch);transform-origin:50% 130%;transform:rotate(var(--rot,0deg)) translateY(calc(var(--lift,0px) + var(--pop,0px)));margin-left:var(--overlap,0px)}
+/* Cards you can play stand proud of the rest, which is what makes a squeezed
+   fan usable: you pick out your options by height, not by reading every face. */
+.hand .card.playable{--pop:-10px}
+/* Type scales with the card so a squeezed fan stays readable. */
+.hand .card .big{font-size:calc(var(--cw) * .46);padding:0 calc(var(--cw) * .07)}
+.hand .card .big.word{font-size:calc(var(--cw) * .152)}
+.hand .card .pip{font-size:calc(var(--cw) * .13)}
+.hand .card::before{inset:calc(var(--cw) * .1)}
+.hand .card.playable:hover,.hand .card.playable:focus-visible{--pop:-24px;z-index:60!important;box-shadow:0 14px 22px #03071373}
 .hand .card.playable:focus-visible{outline:3px solid #fff;outline-offset:3px}
-.hand .card.dead{opacity:.47;filter:saturate(.72)}
-.hand .card.dead:hover,.hand .card.dead:focus-visible{opacity:.72;z-index:60!important}
+.hand .card.dead{filter:brightness(.6) saturate(.7)}
+.hand .card.dead:hover,.hand .card.dead:focus-visible{filter:brightness(.82) saturate(.85);z-index:60!important}
 .activity{padding:20px;background:#101a2c;border:1px solid var(--line);border-radius:24px;min-width:0}
 .activity h3{font-size:16px;margin:0 0 14px;font-weight:500}
 .log{max-height:272px;overflow-y:auto;scrollbar-width:thin;font-size:13px}
@@ -220,8 +229,13 @@ input.code{text-transform:uppercase;letter-spacing:.19em;text-align:center;font-
 .banner.info{background:#77d8f311;border-color:#77d8f34d;color:#b4e9f7}
 .modal{position:fixed;inset:0;z-index:60;background:#050b17bf;backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.on{display:flex}
-.sheet{background:var(--panel);border:1px solid #43536f;border-radius:26px;padding:28px;max-width:480px;width:100%;max-height:86vh;overflow-y:auto;box-shadow:0 24px 100px #0005}
-.sheet h3{margin:0 0 8px;font-size:26px;font-weight:500;letter-spacing:-.02em}
+/* The sheet itself does not scroll - its body does - so a long card guide can
+   be scrolled on a phone with the close button still sitting where it was. */
+.sheet{position:relative;display:flex;flex-direction:column;background:var(--panel);border:1px solid #43536f;border-radius:26px;max-width:480px;width:100%;max-height:min(86vh,86dvh);overflow:hidden;box-shadow:0 24px 100px #0005}
+.sheetbody{padding:28px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.sheetclose{position:absolute;top:14px;right:14px;z-index:2;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:13px;background:var(--panel-2);color:var(--text);font-size:24px;line-height:1;cursor:pointer}
+.sheetclose:hover{background:#293754;border-color:#677998}
+.sheet h3{margin:0 0 8px;padding-right:52px;font-size:26px;font-weight:500;letter-spacing:-.02em}
 .sheet p{margin:0 0 22px;color:var(--muted);font-size:14px;line-height:1.6}
 .choices{display:flex;flex-direction:column;gap:9px}
 .cardrow{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
@@ -248,9 +262,24 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
 @media(min-width:1250px){.setup-grid{grid-template-columns:1fr 1.08fr}.home-intro .lede{max-width:400px}.home-intro{margin-bottom:36px}.setup-grid>.panel{padding:30px}}
 @media(max-width:1220px){.screen{padding-left:24px;padding-right:24px}}
 @media(max-width:850px){.game-layout{grid-template-columns:1fr}.activity{padding:17px 20px}.log{max-height:110px}.table{min-height:310px}.lobby-grid{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}.panel{padding:20px}.setup-grid{gap:16px}.home-intro{gap:24px}.home-intro .lede{max-width:300px;font-size:14px}.join-row{grid-template-columns:minmax(0,1fr) 110px}.join-row .btn{padding:12px}.panel-heading h2{font-size:21px}}
-@media(max-width:650px){:root{--r:20px;--hand-h:162px}.topbar{min-height:72px;padding:12px 18px;gap:10px}.brand .spark{width:34px;height:37px;font-size:24px;border-radius:10px}.brand{gap:10px}.brand b{font-size:20px}.brand span{font-size:10px}.online-note{display:none}#connStatus{max-width:160px;font-size:12px}.screen{padding:26px 18px 32px}.home-intro{display:block;margin:0 0 23px}.home-intro h1{font-size:38px}.home-intro .lede{max-width:46ch;font-size:14px;margin-top:14px}.eyebrow{margin-bottom:13px}.setup-grid,.lobby-grid{grid-template-columns:1fr;gap:16px}.panel{padding:21px}.panel-heading{margin-bottom:20px}.panel-heading h2{font-size:22px}.step{width:27px;height:27px}.colour-field{margin-top:20px}.swatch{min-height:56px}.home-footer{font-size:12px;margin-top:20px}.lobby-heading h1{font-size:32px}.lobby-grid{gap:0}.join-row{grid-template-columns:minmax(0,1fr) 115px}.game-heading{margin-bottom:10px}.game-heading h2{font-size:22px}.game-heading .tag{font-size:12px}.seat{min-width:140px;padding:11px 13px}.seats{gap:8px;margin-bottom:10px}.seat .nm{font-size:13px}.table{min-height:286px;gap:45px;padding:28px 16px 34px;border-radius:23px}.pile{gap:10px}.table .card{width:93px;height:134px}.pressbtn{width:94px;height:73px}.barrel{width:108px}.game-layout{gap:16px}.handbar{width:100%;bottom:0;border-radius:22px 22px 0 0;border-bottom:0;padding:11px 15px calc(5px + env(safe-area-inset-bottom))}.hand-title>span{font-size:15px}.hand-title{gap:9px}.turnpill{font-size:13px;padding:4px 9px}.handhead{gap:8px}.headbtns{gap:5px}.headbtns .btn{font-size:12px;padding:8px 10px;min-height:38px}.hand{gap:9px}.hand .card{width:85px;height:122px}.hand .card .big.word{font-size:13px}.hand .card .big{font-size:37px}.sheet{padding:22px;border-radius:23px}.sheet h3{font-size:24px}.banner{font-size:13px}.win h1{font-size:29px!important}}
-@media(max-width:380px){.screen{padding-left:14px;padding-right:14px}.panel{padding:17px}.home-intro h1{font-size:34px}.swatches{gap:7px}.swatch{font-size:12px}.hand-title>span{display:none}.table{gap:28px}.limitopt .s{font-size:12px}.limits{gap:5px}.handbar{padding-left:12px;padding-right:12px}.handhead:has(#catchBtn:not([style*="none"])) .headbtns{width:100%;justify-content:flex-end}.sheet{padding:20px}.modal{padding:14px}.toggles{grid-template-columns:1fr}.guiderow{gap:11px;padding:9px}}
-@media(max-height:740px) and (min-width:651px){#screen-game{padding-top:18px}.game-heading{margin-bottom:8px}.table{min-height:275px;padding-top:24px}.handbar{bottom:8px;padding-top:10px}.hand{min-height:138px}.hand .card{height:119px;width:83px}.seat{padding-top:10px;padding-bottom:10px}}
+@media(max-width:650px){:root{--r:20px;--hand-h:162px}.topbar{min-height:72px;padding:12px 18px;gap:10px}.brand .spark{width:34px;height:37px;font-size:24px;border-radius:10px}.brand{gap:10px}.brand b{font-size:20px}.brand span{font-size:10px}.online-note{display:none}#connStatus{max-width:160px;font-size:12px}.screen{padding:26px 18px 32px}.home-intro{display:block;margin:0 0 23px}.home-intro h1{font-size:38px}.home-intro .lede{max-width:46ch;font-size:14px;margin-top:14px}.eyebrow{margin-bottom:13px}.setup-grid,.lobby-grid{grid-template-columns:1fr;gap:16px}.panel{padding:21px}.panel-heading{margin-bottom:20px}.panel-heading h2{font-size:22px}.step{width:27px;height:27px}.colour-field{margin-top:20px}.swatch{min-height:56px}.home-footer{font-size:12px;margin-top:20px}.lobby-heading h1{font-size:32px}.lobby-grid{gap:0}.join-row{grid-template-columns:minmax(0,1fr) 115px}.game-heading{margin-bottom:10px}.game-heading h2{font-size:22px}.game-heading .tag{font-size:12px}.seat{min-width:140px;padding:11px 13px}.seats{gap:8px;margin-bottom:10px}.seat .nm{font-size:13px}.table{min-height:286px;gap:45px;padding:28px 16px 34px;border-radius:23px}.pile{gap:10px}.table .card{width:93px;height:134px}.pressbtn{width:94px;height:73px}.barrel{width:108px}.game-layout{gap:16px}.handbar{width:100%;bottom:0;border-radius:22px 22px 0 0;border-bottom:0;padding:11px 15px calc(5px + env(safe-area-inset-bottom))}.hand-title>span{font-size:15px}.hand-title{gap:9px}.turnpill{font-size:13px;padding:4px 9px}.handhead{gap:8px}.headbtns{gap:5px}.headbtns .btn{font-size:13px;padding:9px 12px;min-height:44px}.sheet{border-radius:23px}.sheetbody{padding:22px}.sheet h3{font-size:24px}.banner{font-size:13px}.win h1{font-size:29px!important}}
+@media(max-width:380px){.screen{padding-left:14px;padding-right:14px}.panel{padding:17px}.home-intro h1{font-size:34px}.swatches{gap:7px}.swatch{font-size:12px}.hand-title>span{display:none}.table{gap:28px}.limitopt .s{font-size:12px}.limits{gap:5px}.handbar{padding-left:12px;padding-right:12px}.handhead:has(#catchBtn:not([style*="none"])) .headbtns{width:100%;justify-content:flex-end}.sheetbody{padding:18px}.modal{padding:12px}.guiderow{gap:10px;padding:8px}.toggles{grid-template-columns:1fr}.guiderow{gap:11px;padding:9px}}
+@media(max-height:740px) and (min-width:651px){#screen-game{padding-top:18px}.game-heading{margin-bottom:8px}.table{min-height:275px;padding-top:24px}.handbar{bottom:8px;padding-top:10px}.seat{padding-top:10px;padding-bottom:10px}}
+@media(max-height:540px) and (orientation:landscape){
+  .screen{padding-top:12px}
+  .game-heading{margin-bottom:8px}
+  .seats{padding:6px 2px 8px;margin-bottom:8px}
+  .table{min-height:0;padding:16px 14px 22px}
+  .table::after{display:none}
+  .table .card{width:74px;height:107px}
+  .barrel{height:44px}
+  .pressbtn{height:60px}
+  .handbar{padding:8px 14px calc(4px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0}
+  .handhead{margin-bottom:0}
+  .hand{padding-top:26px;padding-bottom:10px;min-height:0}
+  .hand-title>span{display:none}
+  .activity{display:none}
+}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 </style>
@@ -375,7 +404,10 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
 
 <!-- ============ GAME ============ -->
 <section id="screen-game" class="screen" aria-labelledby="gameTitle">
-  <div class="game-heading"><h2 id="gameTitle">The table</h2><span class="tag">Match. Play. Survive.</span></div>
+  <div class="game-heading">
+    <h2 id="gameTitle">The table</h2>
+    <button class="btn sm ghost danger" type="button" id="quitBtn">Leave game</button>
+  </div>
   <div class="seats" id="seats" aria-label="Players at the table"></div>
   <div id="banner" role="status" aria-live="polite"></div>
   <div class="game-layout">
@@ -426,7 +458,6 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
       <button class="btn sm ghost" id="catchBtn" style="display:none">Catch!</button>
       <button class="btn sm ghost" id="guideBtn">Cards</button>
       <button class="btn sm ghost" id="scoreBtn">Scores</button>
-      <button class="btn sm ghost danger" id="quitBtn">Leave</button>
     </div>
   </div>
   <div class="hand" id="hand" aria-label="Your cards"></div>
@@ -435,11 +466,14 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
 <!-- modal -->
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" aria-describedby="mBody">
   <div class="sheet">
-    <h3 id="mTitle">&mdash;</h3>
-    <p id="mBody"></p>
-    <div class="choices" id="mChoices"></div>
-    <div style="height:10px"></div>
-    <button class="btn ghost" id="mCancel">Cancel</button>
+    <button class="sheetclose" type="button" id="mClose" aria-label="Close">&times;</button>
+    <div class="sheetbody">
+      <h3 id="mTitle">&mdash;</h3>
+      <p id="mBody"></p>
+      <div class="choices" id="mChoices"></div>
+      <div style="height:10px"></div>
+      <button class="btn ghost" id="mCancel">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -627,13 +661,20 @@ function flash(msg) {
 // ---- prompts ----------------------------------------------------------------
 let modalResolve = null;
 let modalPreviousFocus = null;
+// Whether this modal can be waved away. Kept as state rather than read back off
+// the Cancel button's style, which is how the card guide once ended up with no
+// way out: a forced-choice prompt had hidden Cancel, and nothing put it back.
+let modalDismissible = true;
 
 function modalControls() {
   return Array.from($('modal').querySelectorAll('button:not(:disabled), input:not(:disabled), a[href]'))
     .filter(el => el.getClientRects().length > 0);
 }
 
-function revealModal() {
+function revealModal(dismissible) {
+  modalDismissible = dismissible !== false;
+  $('mClose').style.display = modalDismissible ? '' : 'none';
+  $('mCancel').style.display = modalDismissible ? '' : 'none';
   if (!$('modal').classList.contains('on')) modalPreviousFocus = document.activeElement;
   $('modal').classList.add('on');
   document.querySelectorAll('main, .topbar, #handbar').forEach(el => { el.inert = true; });
@@ -656,7 +697,7 @@ function hideModal() {
 $('modal').onkeydown = event => {
   if (event.key === 'Escape') {
     event.preventDefault();
-    if ($('mCancel').style.display !== 'none') finishModal(null);
+    if (modalDismissible) finishModal(null);
   }
   if (event.key !== 'Tab') return;
   const controls = modalControls();
@@ -682,10 +723,26 @@ function openModal(title, body, choices, opts) {
       b.onclick = () => finishModal(ch.value);
       box.appendChild(b);
     });
-    $('mCancel').style.display = (opts && opts.noCancel) ? 'none' : '';
     $('mCancel').textContent = 'Cancel';
-    revealModal();
+    revealModal(!(opts && opts.noCancel));
   });
+}
+
+/**
+ * A read-only panel: the card guide, an explainer, the scoresheet, a peeked
+ * hand. Every reason it can be closed lives here, so no caller can open one
+ * you are stuck inside.
+ */
+function openInfo(title, body, fill, closeLabel) {
+  modalResolve = null;
+  $('mTitle').textContent = title;
+  $('mBody').textContent = body || '';
+  const box = $('mChoices');
+  box.innerHTML = '';
+  box.className = 'guide';
+  if (fill) fill(box);
+  $('mCancel').textContent = closeLabel || 'Close';
+  revealModal(true);
 }
 
 function finishModal(value) {
@@ -695,6 +752,10 @@ function finishModal(value) {
   if (r) r(value);
 }
 $('mCancel').onclick = () => finishModal(null);
+$('mClose').onclick = () => { if (modalDismissible) finishModal(null); };
+// Tapping the dimmed area outside the sheet closes it, which is what a thumb
+// reaches for first on a phone.
+$('modal').onclick = event => { if (event.target === $('modal') && modalDismissible) finishModal(null); };
 
 const askColor = () => openModal('Pick a colour', 'What colour is in play now?',
   COLORS.map(c => ({label: COLOR_NAME[c], value: c})), {noCancel: true});
@@ -860,11 +921,8 @@ function showGuide() {
   const hue = (view && view.color) || 'ember';
   const shade = k => (COLOURLESS.indexOf(k) === -1 ? hue : null);
 
-  $('mTitle').textContent = 'What the cards do';
-  $('mBody').textContent = 'Everything in this deck. Extras the host switched off are not shown.';
-  const box = $('mChoices');
-  box.innerHTML = '';
-  box.className = 'guide';
+  openInfo('What the cards do',
+    'Everything in this deck. Extras the host switched off are not shown.', box => {
 
   GUIDE_CORE.forEach(k => {
     const card = k === 'num' ? {c: hue, k: 'num', n: 7} : {c: shade(k), k};
@@ -881,10 +939,7 @@ function showGuide() {
       box.appendChild(guideRow(card, cardMeaning(card)));
     });
   }
-
-  $('mCancel').textContent = 'Close';
-  modalResolve = null;
-  revealModal();
+  });
 }
 
 /**
@@ -893,21 +948,15 @@ function showGuide() {
  */
 function explainCard(card) {
   const meaning = cardMeaning(card);
-  $('mTitle').textContent = meaning.title;
-  $('mBody').textContent = meaning.text;
-  const box = $('mChoices');
-  box.innerHTML = '';
-  box.className = 'guide';
-  box.appendChild(guideRow(card, {
-    title: view && !view.yourTurn ? 'Not your turn yet' : 'You cannot play this right now',
-    text: view && !view.yourTurn
-      ? 'Wait for your turn and it may well be playable.'
-      : 'It has to match ' + (COLOR_NAME[view.color] || 'the colour in play')
-        + ' or the card on the pile. Stuck? Press the launcher.',
-  }));
-  $('mCancel').textContent = 'Close';
-  modalResolve = null;
-  revealModal();
+  openInfo(meaning.title, meaning.text, box => {
+    box.appendChild(guideRow(card, {
+      title: view && !view.yourTurn ? 'Not your turn yet' : 'You cannot play this right now',
+      text: view && !view.yourTurn
+        ? 'Wait for your turn and it may well be playable.'
+        : 'It has to match ' + (COLOR_NAME[view.color] || 'the colour in play')
+          + ' or the card on the pile. Stuck? Press the launcher.',
+    }));
+  });
 }
 
 // ---- leaving ----------------------------------------------------------------
@@ -951,16 +1000,10 @@ async function quitRoom() {
 }
 
 function showPeek(peek) {
-  $('mTitle').textContent = peek.name + '’s hand';
-  $('mBody').textContent = peek.hand.length + ' cards. Only you can see this.';
-  const box = $('mChoices');
-  box.className = 'cardrow';
-  box.innerHTML = '';
-  peek.hand.forEach(c => box.appendChild(cardEl(c, {mini: true})));
-  $('mCancel').style.display = '';
-  $('mCancel').textContent = 'Done';
-  modalResolve = null;
-  revealModal();
+  openInfo(peek.name + '’s hand', peek.hand.length + ' cards. Only you can see this.', box => {
+    box.className = 'cardrow';
+    peek.hand.forEach(c => box.appendChild(cardEl(c, {mini: true})));
+  }, 'Done');
 }
 
 function renderLobby() {
@@ -1149,22 +1192,16 @@ function fillScoreTable(table) {
 /** The scoresheet on demand, mid-hand, without leaving the table. */
 function showScoresheet() {
   if (!view) return;
-  $('mTitle').textContent = 'Scoresheet';
-  $('mBody').textContent = 'Reach ' + view.limit + ' points and you are knocked out.';
-  const box = $('mChoices');
-  box.className = '';
-  box.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.className = 'sheetwrap';
-  const t = document.createElement('table');
-  t.className = 'score';
-  wrap.appendChild(t);
-  box.appendChild(wrap);
-  fillScoreTable(t);
-  $('mCancel').style.display = '';
-  $('mCancel').textContent = 'Close';
-  modalResolve = null;
-  revealModal();
+  openInfo('Scoresheet', 'Reach ' + view.limit + ' points and you are knocked out.', box => {
+    box.className = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'sheetwrap';
+    const t = document.createElement('table');
+    t.className = 'score';
+    wrap.appendChild(t);
+    box.appendChild(wrap);
+    fillScoreTable(t);
+  });
 }
 
 /** Between hands, and at the end of a match: who took it, and the sheet. */
@@ -1264,21 +1301,110 @@ function renderBanner() {
   b.appendChild(div);
 }
 
+// ---- the fan -----------------------------------------------------------------
+// A card is 91x131 at full size. Below CARD_MIN they stop being cards, and SHOW
+// is the least fraction of one that has to stay uncovered for it to be worth
+// tapping - together they decide how far a big hand can be squeezed.
+const CARD_RATIO = 131 / 91;
+const CARD_MAX = 96, CARD_MIN = 46, CARD_GAP = 10, SHOW = 0.22;
+const MAX_SPREAD = 18;      // degrees corner to corner; more than this reads as a mess
+const BAR_SHARE = 0.21;     // most of the screen height the cards themselves may take
+
+let handCards = [];   // the card elements on screen, kept for re-measuring
+
+/**
+ * How far the outermost card sticks out sideways once it is tilted. It pivots
+ * about a point below itself, so the tilt is partly a sideways swing, and that
+ * has to be reserved or the ends of the fan get clipped off the bar.
+ */
+function fanSwing(n, cw) {
+  if (n < 2) return 0;
+  // What swings furthest is the card's top outer corner, not its middle: the
+  // pivot sits at 130% of the card's height, so that corner is the far end of
+  // the longest radius. Measuring from the middle under-reserves by about a
+  // third and the end cards get their corners clipped.
+  const rad = MAX_SPREAD / 2 * Math.PI / 180;
+  const ch = cw * CARD_RATIO;
+  // Plus a couple of pixels: the shadow and the 1px border sit outside the box,
+  // and everything here has been rounded at least once.
+  return Math.ceil(1.3 * ch * Math.sin(rad) + (cw / 2) * (1 - Math.cos(rad))) + 3;
+}
+
+/**
+ * Sizes and spaces the hand so all of it is on screen at once - no sideways
+ * scrolling, however many cards you are holding. Cards are drawn as large as
+ * the bar can afford, then shrunk and overlapped only as far as it takes to
+ * fit. Runs again whenever the bar changes size, so rotating a phone or
+ * splitting a tablet screen re-fits rather than clipping.
+ */
+function layoutHand() {
+  const n = handCards.length;
+  if (!n) return;
+  const box = $('hand');
+  const total = (box.clientWidth || 0);
+  if (!(total > 0)) return;                      // not laid out yet: CSS defaults stand
+
+  // How wide a card may be: big enough to read, never taller than its share of
+  // the screen (a tall fan on a short phone leaves no table), and never so wide
+  // that the hand cannot fit however many cards are in it.
+  const vh = window.innerHeight || 0;
+  const byHeight = vh ? (vh * BAR_SHARE) / CARD_RATIO : CARD_MAX;
+  const roomy = Math.min(CARD_MAX, byHeight, total / 4.4);
+
+  // Two passes: a card size, then the sideways swing its rotation costs, then
+  // the size again now that the swing has eaten into the width. Without this
+  // the outermost cards tilt straight out of the bar and get clipped.
+  let cw = Math.max(CARD_MIN, Math.min(roomy, total / (1 + SHOW * (n - 1))));
+  let swing = fanSwing(n, cw);
+  cw = Math.round(Math.max(CARD_MIN, Math.min(roomy, (total - swing * 2) / (1 + SHOW * (n - 1)))));
+  swing = fanSwing(n, cw);
+
+  const ch = Math.round(cw * CARD_RATIO);
+  box.style.setProperty('--cw', cw + 'px');
+  box.style.setProperty('--ch', ch + 'px');
+  box.style.paddingLeft = swing + 'px';
+  box.style.paddingRight = swing + 'px';
+
+  const avail = total - swing * 2;
+
+  // How far apart to place them: a comfortable gap when there is room, else
+  // just enough overlap that the last card still lands inside the bar. Floored
+  // rather than rounded, so the total can only ever come in under the width.
+  const step = n > 1 ? Math.min(cw + CARD_GAP, (avail - cw) / (n - 1)) : 0;
+  const overlap = Math.floor(step - cw);
+
+  // The spread follows the width the hand actually occupies, so a squeezed fan
+  // curls less and a roomy one opens up.
+  const width = cw + (n - 1) * step;
+  const spread = n < 2 ? 0 : Math.min(MAX_SPREAD, Math.max(6, width / avail * MAX_SPREAD));
+  const peak = n < 2 ? 0 : Math.min(4 + n, 11);
+
+  handCards.forEach((el, i) => {
+    const t = n < 2 ? 0 : (i / (n - 1)) * 2 - 1;   // -1 at the left, +1 at the right
+    el.style.setProperty('--rot', (t * spread / 2).toFixed(2) + 'deg');
+    el.style.setProperty('--lift', (-(1 - t * t) * peak).toFixed(1) + 'px');
+    el.style.setProperty('--overlap', (i === 0 ? 0 : overlap) + 'px');
+  });
+}
+
+/**
+ * The hand bar is fixed to the bottom and its height moves with the cards and
+ * with however many control buttons have wrapped. Measuring it beats guessing:
+ * the table above reserves exactly this much room and nothing hides behind it.
+ */
+function syncBarHeight() {
+  const bar = $('handbar');
+  if (!bar || bar.style.display === 'none') return;
+  const h = bar.offsetHeight || 0;
+  if (h > 0) document.documentElement.style.setProperty('--bar-h', h + 'px');
+}
+
 function renderHand() {
   const focusedCard = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.cardId;
   const box = $('hand');
   box.innerHTML = '';
   const playable = view.playable || [];
-  const n = view.hand.length;
-
-  // The fan. Each card pivots about a point below the bar, so a rotation also
-  // swings it along an arc; the lift is a parabola so the middle of the hand
-  // rides highest. Both the spread and the overlap are capped - a forty-card
-  // hand still has to be readable, and past a dozen cards the bar scrolls
-  // rather than fanning ever wider.
-  const spread = n < 2 ? 0 : Math.min(n * 3.4, 26);
-  const peak = n < 2 ? 0 : Math.min(4 + n, 13);
-  const overlap = n <= 6 ? 0 : -Math.min((n - 6) * 5, 44);
+  handCards = [];
 
   view.hand.forEach((card, i) => {
     const el = cardEl(card, {interactive: true});
@@ -1289,16 +1415,15 @@ function renderHand() {
     // and why it is greyed out, which is the only way to ask mid-hand.
     if (!ok) el.setAttribute('aria-disabled', 'true');
     el.onclick = ok ? () => tryPlay(card) : () => explainCard(card);
-
-    const t = n < 2 ? 0 : (i / (n - 1)) * 2 - 1;      // -1 at the left, +1 at the right
-    el.style.setProperty('--rot', (t * spread / 2).toFixed(2) + 'deg');
-    el.style.setProperty('--lift', (-(1 - t * t) * peak).toFixed(1) + 'px');
-    if (i > 0) el.style.setProperty('--overlap', overlap + 'px');
     el.style.zIndex = String(i + 1);
 
+    handCards.push(el);
     box.appendChild(el);
     if (focusedCard === card.id) el.focus({preventScroll: true});
   });
+
+  layoutHand();
+  syncBarHeight();
   if (!view.hand.length) {
     const p = document.createElement('div');
     p.className = 'muted';
@@ -1452,6 +1577,18 @@ $('nameIn').oninput = () => { nameIsGenerated = false; updateNameHint(); renderI
 $('rollBtn').onclick = rollName;
 $('scoreBtn').onclick = showScoresheet;
 $('guideBtn').onclick = showGuide;
+
+// Rotating a phone, splitting a tablet screen, or a browser bar sliding away
+// all change how much room the hand has. Re-fit rather than clip; debounced
+// because resize fires continuously while a window is dragged.
+let refitTimer = null;
+function refit() {
+  clearTimeout(refitTimer);
+  refitTimer = setTimeout(() => { layoutHand(); syncBarHeight(); }, 90);
+}
+window.addEventListener('resize', refit);
+window.addEventListener('orientationchange', refit);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
 $('quitBtn').onclick = quitRoom;
 $('leaveLobbyBtn').onclick = quitRoom;
 $('leaveOverBtn').onclick = quitRoom;

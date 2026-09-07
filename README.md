@@ -88,8 +88,8 @@ guessed — a losing player is left holding about 80 points, so a whole deck
 The scoresheet is a table of every hand, per player, with running totals — on
 screen between hands, and behind the **Scores** button mid-hand.
 
-**Leaving.** There is a **Leave** button in the lobby, at the table and on the
-scoresheet. What it costs depends on when you press it:
+**Leaving.** There is a **Leave game** button at the top of the table, and a
+**Leave** on the lobby and the scoresheet. What it costs depends on when you press it:
 
 | When | What happens |
 |---|---|
@@ -107,7 +107,21 @@ attack whose *sender* has left fizzles instead of bouncing at an empty seat —
 **Looking cards up.** The **Cards** button at the table lists everything in
 *this* deck and what it does, extras the host switched off left out. Tapping a
 card you cannot play explains that card and why it will not go down, which is
-the only way to ask the question mid-hand.
+the only way to ask the question mid-hand. Any read-only panel closes four
+ways: the X, the button, tapping the backdrop, or Escape.
+
+**The hand fans.** However many cards you are holding, all of them are on
+screen at once - the hand never scrolls sideways. `layoutHand()` measures the
+bar and picks a card size, then overlaps just enough to fit, shrinking the
+cards only when overlapping alone will not do it. A card is never smaller than
+46px, never taller than a fifth of the screen, and the tilt of the outermost
+cards is reserved for in the width or their corners get clipped. Cards you can
+actually play stand proud of the rest, so a squeezed fan is read by height
+rather than by squinting at every face. It re-fits on resize and on rotation.
+
+`test/client.test.js` walks that layout at five widths and eight hand sizes and
+asserts the whole fan lands inside the bar every time; a headless sweep from
+320x568 up to 1180x820 confirms it against a real browser.
 
 **Calling it.** Down to one card, you choose whether to call BLAST. Stay quiet
 and any player can catch you on their turn — that costs you two presses.
@@ -164,7 +178,7 @@ hours after their last write.
 
 ## Tests
 
-No dependencies, nothing to install — `node` and go. 344 assertions.
+No dependencies, nothing to install — `node` and go. 369 assertions.
 
 ```sh
 node test/rules.test.js       # 43 — turn order, every card's effect, winning
@@ -174,7 +188,7 @@ node test/names.test.js       # 16 — the random-name pools (incl. the 14-char 
 node test/match.test.js       # 56 — card values, scoresheet, knock-outs, match length
 node test/invite.test.js      # 29 — the invite-link flow, both ends
 node test/quit.test.js        # 60 — leaving: seats, turn order, host handover
-node test/client.test.js      # 61 — the fanned hand, the card guide, leaving
+node test/client.test.js      # 86 — the fan at every size, the guide, closing it, leaving
 node test/sim.js 500          # fuzzer: 500 random games, 2-6 players
 node test/sim.js 800 4        # 800 games pinned to 4 players
 ```
