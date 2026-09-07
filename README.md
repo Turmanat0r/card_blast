@@ -139,6 +139,13 @@ room code can join. That's the point of a zero-login party game.
 
 ## Deploying
 
+**Live at https://card-blast.vercel.app** — share that one. Vercel also keeps
+auto-generated aliases with the account slug in them
+(`card-blast-turmanat0r.vercel.app`, and a per-branch one); they are created
+for every project and cannot be removed, but nothing needs to use them. Invite
+links are built from `location.origin`, so a game started from the clean
+domain hands out clean links.
+
 Zero-config Vercel: static `index.html` plus the `api/` folder, no build step.
 `api/_engine.js` starts with an underscore so Vercel neither routes to it nor
 serves it as a static file.

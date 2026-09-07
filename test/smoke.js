@@ -1,7 +1,9 @@
 // End-to-end smoke test against the live deployment: two players join a real
 // room, the host deals, and they play a full game through the public HTTP API.
 // Also re-checks the secrecy guarantee over the real wire.
-const BASE = 'https://card-blast-turmanat0r.vercel.app/api/room';
+// Point CB_HOST at a preview deployment to smoke-test that instead.
+const HOST = process.env.CB_HOST || 'https://card-blast.vercel.app';
+const BASE = HOST + '/api/room';
 
 async function api(action, {room, token, body, method} = {}) {
   const url = BASE + '?action=' + action + (room ? '&room=' + room : '');
