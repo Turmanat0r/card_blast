@@ -16,7 +16,13 @@ const FIXED = parseInt(process.argv[3] || '0', 10);
 const token = () => crypto.randomBytes(18).toString('base64url');
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-const stats = {games: 0, moves: [], plays: 0, presses: 0, catches: 0, maxHand: 0, stuck: 0, rejected: 0, leaks: 0, hands: []};
+const stats = {games: 0, moves: [], plays: 0, presses: 0, catches: 0, maxHand: 0, stuck: 0, rejected: 0, leaks: 0, hands: [], quits: 0};
+
+// How often a bot rage-quits mid-hand. Low on purpose: the point is to hit the
+// seat-removal path from every turn position and direction across many games,
+// not to end matches early. Only fires with three or more still seated, so a
+// quit never empties the table - that path has its own tests.
+const QUIT_RATE = 0.003;
 
 function totalCards(s) {
   return s.draw.length + s.discard.length + s.seats.reduce((n, id) => n + s.hands[id].length, 0);
@@ -89,6 +95,20 @@ for (let g = 0; g < N_GAMES; g++) {
       if (leaked.length) { stats.leaks += leaked.length; throw new Error('LEAK in view: ' + leaked.slice(0, 3).join(',')); }
     }
 
+    // Someone walks out. Doing it here means it lands at every point in the
+    // turn order, under both directions, with attacks pending.
+    if (s.seats.length >= 3 && Math.random() < QUIT_RATE) {
+      const victim = s.seats[Math.floor(Math.random() * s.seats.length)];
+      const seatsBefore = s.seats.length;
+      engine.quitGame(s, victim);
+      stats.quits++;
+      if (s.seats.length !== seatsBefore - 1) throw new Error('a quit did not free a seat');
+      if (totalCards(s) !== deckSize) throw new Error(`CARD LEAK on quit game ${g}: ${totalCards(s)} != ${deckSize}`);
+      if (s.phase === 'play' && (s.turn < 0 || s.turn >= s.seats.length)) throw new Error('BAD TURN INDEX after quit ' + s.turn);
+      if (s.seats.indexOf(victim) !== -1) throw new Error('a leaver kept their seat');
+      continue;
+    }
+
     const move = decide(view);
     const beforeTurn = s.turn, beforeCount = s.hands[actor].length;
 
@@ -123,6 +143,7 @@ for (let g = 0; g < N_GAMES; g++) {
 
   if (s.phase !== 'over') { console.log(`match ${g} (${n}p): unfinished after ${moves} moves`); stats.stuck += 1000; }
   if (engine.activePlayers(s).length !== 1) { console.log(`match ${g}: ${engine.activePlayers(s).length} survivors`); stats.stuck += 1000; }
+  if (s.matchWinner && s.quit && s.quit[s.matchWinner]) { console.log(`match ${g}: a leaver won`); stats.stuck += 1000; }
   stats.games++;
   stats.moves.push(moves);
   stats.hands.push(hands);
@@ -137,6 +158,7 @@ console.log('longest match    :', Math.max(...stats.moves), 'moves');
 console.log('shortest match   :', Math.min(...stats.moves), 'moves');
 console.log('plays/presses    :', stats.plays, '/', stats.presses, '  catches:', stats.catches);
 console.log('biggest hand     :', stats.maxHand, 'cards');
+console.log('mid-hand quits   :', stats.quits);
 console.log('no-progress turns:', stats.stuck);
 console.log('illegal proposals:', stats.rejected);
 console.log('view leaks       :', stats.leaks);

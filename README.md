@@ -88,6 +88,27 @@ guessed — a losing player is left holding about 80 points, so a whole deck
 The scoresheet is a table of every hand, per player, with running totals — on
 screen between hands, and behind the **Scores** button mid-hand.
 
+**Leaving.** There is a **Leave** button in the lobby, at the table and on the
+scoresheet. What it costs depends on when you press it:
+
+| When | What happens |
+|---|---|
+| In the lobby | You are erased — no seat, no score, as though you never arrived |
+| Mid-hand | A forfeit: your cards go back in the pile, your seat closes, and play carries on from whoever is next |
+| Between hands | You sit out every hand from here; the scoresheet still names you |
+
+Two things that would otherwise strand a table are handled explicitly. The host
+is whoever is **first in the room and still in it**, so a host who walks out
+hands the job to the next seat rather than leaving nobody able to deal. And an
+attack aimed at a player who leaves goes with them, while a Mirror played at an
+attack whose *sender* has left fizzles instead of bouncing at an empty seat —
+`test/sim.js` found that one the moment its bots could quit.
+
+**Looking cards up.** The **Cards** button at the table lists everything in
+*this* deck and what it does, extras the host switched off left out. Tapping a
+card you cannot play explains that card and why it will not go down, which is
+the only way to ask the question mid-hand.
+
 **Calling it.** Down to one card, you choose whether to call BLAST. Stay quiet
 and any player can catch you on their turn — that costs you two presses.
 
@@ -136,15 +157,17 @@ hours after their last write.
 
 ## Tests
 
-No dependencies, nothing to install — `node` and go. 120 assertions.
+No dependencies, nothing to install — `node` and go. 344 assertions.
 
 ```sh
-node test/rules.test.js       # 41 — turn order, every card's effect, winning
+node test/rules.test.js       # 43 — turn order, every card's effect, winning
 node test/security.test.js    # 43 — redaction, tokens, move validation
 node test/api.test.js         # 36 — the real handler against a fake Redis
 node test/names.test.js       # 16 — the random-name pools (incl. the 14-char cap)
 node test/match.test.js       # 56 — card values, scoresheet, knock-outs, match length
 node test/invite.test.js      # 29 — the invite-link flow, both ends
+node test/quit.test.js        # 60 — leaving: seats, turn order, host handover
+node test/client.test.js      # 61 — the fanned hand, the card guide, leaving
 node test/sim.js 500          # fuzzer: 500 random games, 2-6 players
 node test/sim.js 800 4        # 800 games pinned to 4 players
 ```
@@ -164,6 +187,15 @@ play the game (zero illegal proposals) while a leak check proves it carries
 nothing more. It also checks that cards are never created or destroyed, that
 the turn index stays in range, that every game terminates, and it prints the
 win spread — lopsided results across seats would mean biased turn rotation.
+
+Bots also walk out at random (about three games in a thousand moves), which is
+what exercises seat removal from every turn position and direction, with
+attacks pending, across thousands of games.
+
+`invite.test.js` and `client.test.js` both run the **real `<script>` out of
+`index.html`** against a stubbed DOM, so they test the shipped client rather
+than a copy of it. Between them they cover the invite flow, the geometry of the
+fanned hand, the card guide, the extras panel and every branch of leaving.
 
 `test/smoke.js` plays a real game against the live deployment over HTTPS —
 two players join a real room, the host deals, and it re-checks the secrecy

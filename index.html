@@ -15,7 +15,7 @@
   --bg:#0c1220;--panel:#151e30;--panel-2:#1c2840;--line:#2d3b53;
   --text:#f4f6fc;--muted:#a9b6ce;--accent:#a2a5ff;--accent-strong:#8388f8;
   --ember:#ff826e;--volt:#cee879;--frost:#77d8f3;--vapor:#bca2fa;
-  --ok:#8be0bb;--warn:#f3ce80;--r:24px;--hand-h:150px;
+  --ok:#8be0bb;--warn:#f3ce80;--r:24px;--hand-h:175px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{min-height:100%;scrollbar-gutter:stable}
@@ -121,18 +121,29 @@ input.code{text-transform:uppercase;letter-spacing:.19em;text-align:center;font-
 .limitopt.sel{border-color:var(--accent);background:#a2a5ff15;box-shadow:inset 0 0 0 1px var(--accent)}
 .limitopt.sel .s{color:var(--accent)}
 .limitopt:disabled{opacity:.72}
-.deck-settings summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:'Outfit',sans-serif;font-size:22px;font-weight:500}
-.deck-settings summary::-webkit-details-marker{display:none}
-.deck-settings summary::after{content:'+';color:var(--accent);font-family:inherit;font-size:26px}
-.deck-settings[open] summary::after{content:'−'}
-.deck-settings[open] summary{margin-bottom:18px}
-.deck-settings .tag{font-family:'DM Sans',sans-serif}
-.toggles{display:grid;grid-template-columns:1fr;gap:8px}
-.tg{display:flex;gap:12px;align-items:flex-start;padding:13px;margin:0;border:1px solid var(--line);border-radius:13px;background:#0e1728;cursor:pointer}
-.tg input{margin:3px 0 0;width:20px;height:20px;flex:none;accent-color:var(--accent)}
-.tg .t{font-size:14px;font-weight:700;letter-spacing:.025em}
-.tg .d{color:var(--muted);font-size:13px;line-height:1.45;font-weight:400;margin-top:3px}
+.deck-settings .panel-heading{margin-bottom:14px}
+.extras-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.extras-bar .muted{font-size:13px}
+.extras-quick{display:flex;gap:7px}
+.extras-quick .btn{min-height:34px;padding:6px 11px;font-size:13px}
+.toggles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tg{display:flex;gap:10px;align-items:center;padding:10px 12px;margin:0;min-width:0;border:1px solid var(--line);border-radius:12px;background:#0e1728;cursor:pointer;transition:border-color .16s,background .16s}
+.tg>div{min-width:0}
+.tg input{margin:0;width:18px;height:18px;flex:none;accent-color:var(--accent)}
+.tg .t{font-size:13px;font-weight:700;letter-spacing:.02em;line-height:1.2}
+.tg .d{color:var(--muted);font-size:12px;line-height:1.3;font-weight:400;margin-top:2px}
+.tg:has(input:checked){border-color:#a2a5ff59;background:#a2a5ff12}
 .tg.locked{opacity:.64;cursor:default}
+.btn.danger{color:#ffb3a3;border-color:#ff826e40;background:transparent}
+.btn.danger:hover:not(:disabled){background:#ff826e1c;border-color:#ff826e99}
+#leaveLobbyBtn,#leaveOverBtn{margin-top:14px}
+.guide{display:flex;flex-direction:column;gap:10px;text-align:left}
+.guiderow{display:flex;gap:14px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:14px;background:#0e1728}
+.guiderow .card{flex:none}
+.gtext{min-width:0}
+.gt{font-family:'Outfit',sans-serif;font-size:16px;font-weight:600;margin-bottom:3px}
+.gd{color:var(--muted);font-size:13px;line-height:1.45}
+.guidehead{margin-top:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
 #screen-game{padding-bottom:calc(var(--hand-h) + 142px + env(safe-area-inset-bottom))}
 .game-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:19px}
 .game-heading h2{font-size:25px}
@@ -188,11 +199,14 @@ input.code{text-transform:uppercase;letter-spacing:.19em;text-align:center;font-
 .turnpill.mine{background:#cee8791f;color:var(--volt);border-color:#cee8794d}
 .headbtns{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 #catchBtn{border-color:var(--ember);color:var(--ember)}
-.hand{display:flex;gap:10px;overflow-x:auto;padding:12px 3px 10px;min-height:var(--hand-h);align-items:flex-start;scrollbar-width:thin;scrollbar-color:#5b6c88 transparent}
-.hand .card{cursor:pointer}
-.hand .card.playable:hover{transform:translateY(-6px);box-shadow:0 10px 16px #03071366}
-.hand .card.playable:focus-visible{outline:3px solid #fff;outline-offset:3px;transform:translateY(-4px)}
-.hand .card.dead{opacity:.47;filter:saturate(.72);cursor:not-allowed}
+.hand{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:32px 3px 10px;min-height:var(--hand-h);align-items:flex-start;scrollbar-width:thin;scrollbar-color:#5b6c88 transparent}
+/* Held like a hand of cards: --rot and --lift are set per card by renderHand,
+   the pivot sits just below the card so a rotation swings it along an arc. */
+.hand .card{cursor:pointer;transform-origin:50% 130%;transform:rotate(var(--rot,0deg)) translateY(var(--lift,0px));margin-left:var(--overlap,0px)}
+.hand .card.playable:hover,.hand .card.playable:focus-visible{transform:rotate(var(--rot,0deg)) translateY(calc(var(--lift,0px) - 14px)) scale(1.03);z-index:60!important;box-shadow:0 14px 22px #03071373}
+.hand .card.playable:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.hand .card.dead{opacity:.47;filter:saturate(.72)}
+.hand .card.dead:hover,.hand .card.dead:focus-visible{opacity:.72;z-index:60!important}
 .activity{padding:20px;background:#101a2c;border:1px solid var(--line);border-radius:24px;min-width:0}
 .activity h3{font-size:16px;margin:0 0 14px;font-weight:500}
 .log{max-height:272px;overflow-y:auto;scrollbar-width:thin;font-size:13px}
@@ -234,8 +248,8 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
 @media(min-width:1250px){.setup-grid{grid-template-columns:1fr 1.08fr}.home-intro .lede{max-width:400px}.home-intro{margin-bottom:36px}.setup-grid>.panel{padding:30px}}
 @media(max-width:1220px){.screen{padding-left:24px;padding-right:24px}}
 @media(max-width:850px){.game-layout{grid-template-columns:1fr}.activity{padding:17px 20px}.log{max-height:110px}.table{min-height:310px}.lobby-grid{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}.panel{padding:20px}.setup-grid{gap:16px}.home-intro{gap:24px}.home-intro .lede{max-width:300px;font-size:14px}.join-row{grid-template-columns:minmax(0,1fr) 110px}.join-row .btn{padding:12px}.panel-heading h2{font-size:21px}}
-@media(max-width:650px){:root{--r:20px;--hand-h:142px}.topbar{min-height:72px;padding:12px 18px;gap:10px}.brand .spark{width:34px;height:37px;font-size:24px;border-radius:10px}.brand{gap:10px}.brand b{font-size:20px}.brand span{font-size:10px}.online-note{display:none}#connStatus{max-width:160px;font-size:12px}.screen{padding:26px 18px 32px}.home-intro{display:block;margin:0 0 23px}.home-intro h1{font-size:38px}.home-intro .lede{max-width:46ch;font-size:14px;margin-top:14px}.eyebrow{margin-bottom:13px}.setup-grid,.lobby-grid{grid-template-columns:1fr;gap:16px}.panel{padding:21px}.panel-heading{margin-bottom:20px}.panel-heading h2{font-size:22px}.step{width:27px;height:27px}.colour-field{margin-top:20px}.swatch{min-height:56px}.home-footer{font-size:12px;margin-top:20px}.lobby-heading h1{font-size:32px}.lobby-grid{gap:0}.join-row{grid-template-columns:minmax(0,1fr) 115px}.game-heading{margin-bottom:10px}.game-heading h2{font-size:22px}.game-heading .tag{font-size:12px}.seat{min-width:140px;padding:11px 13px}.seats{gap:8px;margin-bottom:10px}.seat .nm{font-size:13px}.table{min-height:286px;gap:45px;padding:28px 16px 34px;border-radius:23px}.pile{gap:10px}.table .card{width:93px;height:134px}.pressbtn{width:94px;height:73px}.barrel{width:108px}.game-layout{gap:16px}.handbar{width:100%;bottom:0;border-radius:22px 22px 0 0;border-bottom:0;padding:11px 15px calc(5px + env(safe-area-inset-bottom))}.hand-title>span{font-size:15px}.hand-title{gap:9px}.turnpill{font-size:13px;padding:4px 9px}.handhead{gap:8px}.headbtns{gap:5px}.headbtns .btn{font-size:12px;padding:8px 10px;min-height:38px}.hand{gap:9px}.hand .card{width:85px;height:122px}.hand .card .big.word{font-size:13px}.hand .card .big{font-size:37px}.sheet{padding:22px;border-radius:23px}.sheet h3{font-size:24px}.banner{font-size:13px}.win h1{font-size:29px!important}}
-@media(max-width:380px){.screen{padding-left:14px;padding-right:14px}.panel{padding:17px}.home-intro h1{font-size:34px}.swatches{gap:7px}.swatch{font-size:12px}.hand-title>span{display:none}.table{gap:28px}.limitopt .s{font-size:12px}.limits{gap:5px}.handbar{padding-left:12px;padding-right:12px}.handhead:has(#catchBtn:not([style*="none"])) .headbtns{width:100%;justify-content:flex-end}.sheet{padding:20px}.modal{padding:14px}}
+@media(max-width:650px){:root{--r:20px;--hand-h:162px}.topbar{min-height:72px;padding:12px 18px;gap:10px}.brand .spark{width:34px;height:37px;font-size:24px;border-radius:10px}.brand{gap:10px}.brand b{font-size:20px}.brand span{font-size:10px}.online-note{display:none}#connStatus{max-width:160px;font-size:12px}.screen{padding:26px 18px 32px}.home-intro{display:block;margin:0 0 23px}.home-intro h1{font-size:38px}.home-intro .lede{max-width:46ch;font-size:14px;margin-top:14px}.eyebrow{margin-bottom:13px}.setup-grid,.lobby-grid{grid-template-columns:1fr;gap:16px}.panel{padding:21px}.panel-heading{margin-bottom:20px}.panel-heading h2{font-size:22px}.step{width:27px;height:27px}.colour-field{margin-top:20px}.swatch{min-height:56px}.home-footer{font-size:12px;margin-top:20px}.lobby-heading h1{font-size:32px}.lobby-grid{gap:0}.join-row{grid-template-columns:minmax(0,1fr) 115px}.game-heading{margin-bottom:10px}.game-heading h2{font-size:22px}.game-heading .tag{font-size:12px}.seat{min-width:140px;padding:11px 13px}.seats{gap:8px;margin-bottom:10px}.seat .nm{font-size:13px}.table{min-height:286px;gap:45px;padding:28px 16px 34px;border-radius:23px}.pile{gap:10px}.table .card{width:93px;height:134px}.pressbtn{width:94px;height:73px}.barrel{width:108px}.game-layout{gap:16px}.handbar{width:100%;bottom:0;border-radius:22px 22px 0 0;border-bottom:0;padding:11px 15px calc(5px + env(safe-area-inset-bottom))}.hand-title>span{font-size:15px}.hand-title{gap:9px}.turnpill{font-size:13px;padding:4px 9px}.handhead{gap:8px}.headbtns{gap:5px}.headbtns .btn{font-size:12px;padding:8px 10px;min-height:38px}.hand{gap:9px}.hand .card{width:85px;height:122px}.hand .card .big.word{font-size:13px}.hand .card .big{font-size:37px}.sheet{padding:22px;border-radius:23px}.sheet h3{font-size:24px}.banner{font-size:13px}.win h1{font-size:29px!important}}
+@media(max-width:380px){.screen{padding-left:14px;padding-right:14px}.panel{padding:17px}.home-intro h1{font-size:34px}.swatches{gap:7px}.swatch{font-size:12px}.hand-title>span{display:none}.table{gap:28px}.limitopt .s{font-size:12px}.limits{gap:5px}.handbar{padding-left:12px;padding-right:12px}.handhead:has(#catchBtn:not([style*="none"])) .headbtns{width:100%;justify-content:flex-end}.sheet{padding:20px}.modal{padding:14px}.toggles{grid-template-columns:1fr}.guiderow{gap:11px;padding:9px}}
 @media(max-height:740px) and (min-width:651px){#screen-game{padding-top:18px}.game-heading{margin-bottom:8px}.table{min-height:275px;padding-top:24px}.handbar{bottom:8px;padding-top:10px}.hand{min-height:138px}.hand .card{height:119px;width:83px}.seat{padding-top:10px;padding-bottom:10px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
@@ -318,15 +332,16 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
     <div class="lobby-left">
       <div class="panel">
         <div class="panel-heading"><h2>Invite your players</h2></div>
-        <div class="codebox">
-          <div class="codeside"><div class="tag">Room code</div><span id="lobbyCode">------</span></div>
-          <button class="btn sm ghost" id="copyCodeBtn">Copy code</button>
-        </div>
         <button class="btn primary" id="shareBtn">Send invite link ↗</button>
-        <p class="muted" id="shareHint" style="text-align:center;margin:10px 0 0">One tap and they're at the table.</p>
+        <p class="muted" id="shareHint" style="text-align:center;margin:10px 0 0">One tap and they are at the table — no code to type.</p>
         <div class="linkbox">
           <input type="text" id="linkOut" readonly spellcheck="false" aria-label="Invite link">
           <button class="btn sm" id="copyLinkBtn">Copy</button>
+        </div>
+        <div class="sep">or read the code out</div>
+        <div class="codebox">
+          <div class="codeside"><div class="tag">Room code</div><span id="lobbyCode">------</span></div>
+          <button class="btn sm ghost" id="copyCodeBtn">Copy code</button>
         </div>
       </div>
       <div class="panel">
@@ -340,12 +355,20 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
         <div class="limits" id="limits" role="group" aria-label="Knock-out score"></div>
         <p class="muted" id="limitHint" style="margin:13px 0 0"></p>
       </div>
-      <details class="panel deck-settings">
-        <summary><span>Extra cards <span class="tag" id="hostOnlyNote"></span></span></summary>
+      <div class="panel deck-settings">
+        <div class="panel-heading"><h2>Extra cards</h2><span class="tag" id="hostOnlyNote"></span></div>
+        <div class="extras-bar">
+          <span class="muted" id="extrasCount"></span>
+          <span class="extras-quick" id="extrasQuick">
+            <button class="btn sm ghost" type="button" id="extrasAll">All on</button>
+            <button class="btn sm ghost" type="button" id="extrasNone">Core only</button>
+          </span>
+        </div>
         <div class="toggles" id="toggles"></div>
-      </details>
+      </div>
       <button class="btn go" id="startBtn">Deal the cards</button>
       <p class="muted" id="lobbyHint" style="text-align:center;margin-top:12px" role="status"></p>
+      <button class="btn ghost danger" type="button" id="leaveLobbyBtn">Leave this room</button>
     </div>
   </div>
 </section>
@@ -390,6 +413,7 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
 
   <button class="btn go" id="dealBtn">Deal the next hand</button>
   <p class="muted" id="rematchHint" style="text-align:center;margin-top:10px"></p>
+  <button class="btn ghost danger" type="button" id="leaveOverBtn">Leave the match</button>
 </section>
 
 </main>
@@ -400,7 +424,9 @@ table.score{width:100%;border-collapse:collapse;font-size:14px}
     <div class="hand-title"><span>Your hand</span><div class="turnpill" id="turnPill" role="status">&mdash;</div></div>
     <div class="headbtns">
       <button class="btn sm ghost" id="catchBtn" style="display:none">Catch!</button>
+      <button class="btn sm ghost" id="guideBtn">Cards</button>
       <button class="btn sm ghost" id="scoreBtn">Scores</button>
+      <button class="btn sm ghost danger" id="quitBtn">Leave</button>
     </div>
   </div>
   <div class="hand" id="hand" aria-label="Your cards"></div>
@@ -464,6 +490,40 @@ const DESC = {
   chain: 'Every other player presses the launcher once.',
 };
 const OPTIONAL = ['snipe', 'mirror', 'overload', 'peek', 'gift', 'twin', 'trade', 'scramble', 'chain'];
+const COLOURLESS = ['wild', 'wildfire', 'trade', 'scramble', 'chain'];
+
+// The core cards read the same way as the extras, so the guide and the
+// tap-a-card explainer can work off one table.
+DESC.num = 'Match the colour or the number showing on the pile.';
+DESC.skip = 'The next player loses their turn.';
+DESC.rev = 'Flip the direction of play. With two players it acts as a Skip.';
+DESC.hit2 = 'The next player presses the launcher twice. Stacks if they play one back.';
+DESC.discardall = 'Dump every card of that colour out of your hand at once.';
+DESC.wild = 'Play it on anything, then name the colour in play.';
+DESC.wildfire = 'Name the colour; the next player presses until cards actually fire.';
+
+// A shorter line for the lobby chips, where nine paragraphs is too much to read.
+const SHORT = {
+  snipe: 'Any player presses once',
+  mirror: 'Bounce an attack back, plus one',
+  overload: 'The next launch fires double',
+  peek: 'Look at somebody’s hand',
+  gift: 'Hand one card to anyone',
+  twin: 'Take another turn straight away',
+  trade: 'Swap your whole hand',
+  scramble: 'Every hand shifts one seat',
+  chain: 'Everyone else presses once',
+};
+
+/** The order the guide lists cards in: core first, then whatever extras are in. */
+const GUIDE_CORE = ['num', 'skip', 'rev', 'hit2', 'discardall', 'wild', 'wildfire'];
+
+/** What one card is called and what it does, for the explainer and the guide. */
+function cardMeaning(card) {
+  if (!card) return {title: 'Card', text: ''};
+  if (card.k === 'num') return {title: 'Number ' + card.n, text: DESC.num};
+  return {title: FACE[card.k] || card.k, text: DESC[card.k] || ''};
+}
 
 // Which cards need the player to answer something before the move is sent.
 // The server enforces all of this again; here it just drives the prompts.
@@ -771,6 +831,125 @@ function kickBarrel() {
   t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
 }
 
+/** One row of the card guide: the card itself, its name, what it does. */
+function guideRow(card, meaning) {
+  const row = document.createElement('div');
+  row.className = 'guiderow';
+  row.appendChild(cardEl(card, {mini: true}));
+  const box = document.createElement('div');
+  box.className = 'gtext';
+  const t = document.createElement('div');
+  t.className = 'gt';
+  t.textContent = meaning.title;
+  const d = document.createElement('div');
+  d.className = 'gd';
+  d.textContent = meaning.text;
+  box.appendChild(t);
+  box.appendChild(d);
+  row.appendChild(box);
+  return row;
+}
+
+/**
+ * Every card that is actually in this deck, and what it does. Extras the host
+ * switched off are left out, so the guide describes the game being played
+ * rather than the game in general.
+ */
+function showGuide() {
+  const opts = (view && view.opts) || {};
+  const hue = (view && view.color) || 'ember';
+  const shade = k => (COLOURLESS.indexOf(k) === -1 ? hue : null);
+
+  $('mTitle').textContent = 'What the cards do';
+  $('mBody').textContent = 'Everything in this deck. Extras the host switched off are not shown.';
+  const box = $('mChoices');
+  box.innerHTML = '';
+  box.className = 'guide';
+
+  GUIDE_CORE.forEach(k => {
+    const card = k === 'num' ? {c: hue, k: 'num', n: 7} : {c: shade(k), k};
+    box.appendChild(guideRow(card, cardMeaning(card)));
+  });
+  const extras = OPTIONAL.filter(k => opts[k] !== false);
+  if (extras.length) {
+    const head = document.createElement('div');
+    head.className = 'guidehead';
+    head.textContent = 'Extras in this deck';
+    box.appendChild(head);
+    extras.forEach(k => {
+      const card = {c: shade(k), k};
+      box.appendChild(guideRow(card, cardMeaning(card)));
+    });
+  }
+
+  $('mCancel').textContent = 'Close';
+  modalResolve = null;
+  revealModal();
+}
+
+/**
+ * Tapping a card you cannot play explains it, rather than doing nothing. Also
+ * says why it is greyed out, which is the question actually being asked.
+ */
+function explainCard(card) {
+  const meaning = cardMeaning(card);
+  $('mTitle').textContent = meaning.title;
+  $('mBody').textContent = meaning.text;
+  const box = $('mChoices');
+  box.innerHTML = '';
+  box.className = 'guide';
+  box.appendChild(guideRow(card, {
+    title: view && !view.yourTurn ? 'Not your turn yet' : 'You cannot play this right now',
+    text: view && !view.yourTurn
+      ? 'Wait for your turn and it may well be playable.'
+      : 'It has to match ' + (COLOR_NAME[view.color] || 'the colour in play')
+        + ' or the card on the pile. Stuck? Press the launcher.',
+  }));
+  $('mCancel').textContent = 'Close';
+  modalResolve = null;
+  revealModal();
+}
+
+// ---- leaving ----------------------------------------------------------------
+/**
+ * Drops this device back to the home screen and forgets the room. The token is
+ * dropped too, so re-opening the invite link joins fresh rather than trying to
+ * resume as a player the server has already written off.
+ */
+function leaveToHome() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  try { if (room) localStorage.removeItem(tokenKey(room)); } catch (e) { /* private mode */ }
+  room = '';
+  token = '';
+  view = null;
+  lastRenderedV = -1;
+  flashMsg = '';
+  busy = false;
+  try { history.replaceState(null, '', location.pathname); } catch (e) { /* file:// */ }
+  clearInviteMode();
+  $('handbar').style.display = 'none';
+  setConnStatus(true);
+  showScreen('screen-home');
+  renderIdentity();
+}
+
+/** Confirms, tells the server, then leaves whatever the server says. */
+async function quitRoom() {
+  const playing = view && view.phase === 'play';
+  const leave = await openModal(
+    playing ? 'Leave the game?' : 'Leave this room?',
+    playing
+      ? 'Your cards go back into the pile and you are out of the match. You cannot rejoin once it has started.'
+      : 'You will be taken out of this room and back to the start.',
+    [{label: 'Leave', value: true}, {label: 'Stay', value: false, primary: true}],
+    {noCancel: true});
+  if (!leave) return;
+  // If the call fails the player still wanted out, so go anyway; the room
+  // expires on its own and the server treats a silent player as still seated.
+  try { await api('quit', {method: 'POST'}); } catch (e) { /* leaving regardless */ }
+  leaveToHome();
+}
+
 function showPeek(peek) {
   $('mTitle').textContent = peek.name + '’s hand';
   $('mBody').textContent = peek.hand.length + ' cards. Only you can see this.';
@@ -846,6 +1025,16 @@ function renderLimits() {
     + 'That is ' + (LIMIT_HANDS[limit] || 'several') + ' hands.';
 }
 
+// How many cards each extra puts in the deck: one per colour for the coloured
+// ones, two apiece for the colourless. The core deck is 112 on its own.
+const EXTRA_CARDS = {snipe: 4, mirror: 4, overload: 4, peek: 4, gift: 4, twin: 4, trade: 2, scramble: 2, chain: 2};
+const CORE_CARDS = 112;
+
+async function setExtras(next) {
+  try { const out = await api('opts', {body: {opts: next}}); applyView(out.view, true); }
+  catch (e) { flash(e.message); await refresh(); }
+}
+
 function renderToggles() {
   const host = view && view.isHost;
   const opts = (view && view.opts) || {};
@@ -858,19 +1047,30 @@ function renderToggles() {
     cb.type = 'checkbox';
     cb.checked = opts[k] !== false;
     cb.disabled = !host;
-    cb.onchange = async () => {
+    cb.onchange = () => {
       const next = Object.assign({}, view.opts);
       next[k] = cb.checked;
-      try { const out = await api('opts', {body: {opts: next}}); applyView(out.view, true); }
-      catch (e) { flash(e.message); await refresh(); }
+      setExtras(next);
     };
     const txt = document.createElement('div');
     const t = document.createElement('div'); t.className = 't'; t.textContent = FACE[k];
-    const d = document.createElement('div'); d.className = 'd'; d.textContent = DESC[k];
+    const d = document.createElement('div'); d.className = 'd'; d.textContent = SHORT[k] || DESC[k];
     txt.appendChild(t); txt.appendChild(d);
     lab.appendChild(cb); lab.appendChild(txt);
     box.appendChild(lab);
   });
+
+  // What the host actually wants to know: how many are on and how big that
+  // makes the deck. A fatter deck means a longer hand.
+  const on = OPTIONAL.filter(k => opts[k] !== false);
+  const cards = on.reduce((sum, k) => sum + EXTRA_CARDS[k], CORE_CARDS);
+  $('extrasCount').textContent = (on.length === OPTIONAL.length
+    ? 'Everything in'
+    : on.length === 0 ? 'Core deck only' : on.length + ' of ' + OPTIONAL.length + ' in')
+    + ' — ' + cards + ' cards';
+  $('extrasQuick').style.display = host ? '' : 'none';
+  $('extrasAll').disabled = busy || on.length === OPTIONAL.length;
+  $('extrasNone').disabled = busy || on.length === 0;
 }
 
 /**
@@ -1069,15 +1269,35 @@ function renderHand() {
   const box = $('hand');
   box.innerHTML = '';
   const playable = view.playable || [];
-  view.hand.forEach(card => {
+  const n = view.hand.length;
+
+  // The fan. Each card pivots about a point below the bar, so a rotation also
+  // swings it along an arc; the lift is a parabola so the middle of the hand
+  // rides highest. Both the spread and the overlap are capped - a forty-card
+  // hand still has to be readable, and past a dozen cards the bar scrolls
+  // rather than fanning ever wider.
+  const spread = n < 2 ? 0 : Math.min(n * 3.4, 26);
+  const peak = n < 2 ? 0 : Math.min(4 + n, 13);
+  const overlap = n <= 6 ? 0 : -Math.min((n - 6) * 5, 44);
+
+  view.hand.forEach((card, i) => {
     const el = cardEl(card, {interactive: true});
     el.dataset.cardId = card.id;
     const ok = view.yourTurn && !busy && playable.indexOf(card.id) !== -1;
     el.classList.add(ok ? 'playable' : 'dead');
-    el.disabled = !ok;
-    if (ok) el.onclick = () => tryPlay(card);
+    // A card you cannot play is not disabled: tapping it explains what it does
+    // and why it is greyed out, which is the only way to ask mid-hand.
+    if (!ok) el.setAttribute('aria-disabled', 'true');
+    el.onclick = ok ? () => tryPlay(card) : () => explainCard(card);
+
+    const t = n < 2 ? 0 : (i / (n - 1)) * 2 - 1;      // -1 at the left, +1 at the right
+    el.style.setProperty('--rot', (t * spread / 2).toFixed(2) + 'deg');
+    el.style.setProperty('--lift', (-(1 - t * t) * peak).toFixed(1) + 'px');
+    if (i > 0) el.style.setProperty('--overlap', overlap + 'px');
+    el.style.zIndex = String(i + 1);
+
     box.appendChild(el);
-    if (focusedCard === card.id && ok) el.focus({preventScroll: true});
+    if (focusedCard === card.id) el.focus({preventScroll: true});
   });
   if (!view.hand.length) {
     const p = document.createElement('div');
@@ -1231,6 +1451,23 @@ $('nameIn').value = myName;
 $('nameIn').oninput = () => { nameIsGenerated = false; updateNameHint(); renderIdentity(); };
 $('rollBtn').onclick = rollName;
 $('scoreBtn').onclick = showScoresheet;
+$('guideBtn').onclick = showGuide;
+$('quitBtn').onclick = quitRoom;
+$('leaveLobbyBtn').onclick = quitRoom;
+$('leaveOverBtn').onclick = quitRoom;
+
+// The host can switch the whole set of extras at once, which is what most
+// tables actually want: everything, or the plain deck.
+$('extrasAll').onclick = () => {
+  const next = {};
+  OPTIONAL.forEach(k => next[k] = true);
+  setExtras(next);
+};
+$('extrasNone').onclick = () => {
+  const next = {};
+  OPTIONAL.forEach(k => next[k] = false);
+  setExtras(next);
+};
 
 /**
  * A device that has played before already has a name and colour, so show them

@@ -239,6 +239,15 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ---- leave the room ----
+    // Anyone can do this to themselves at any time, so there is no host check:
+    // the engine decides what leaving costs depending on the phase.
+    if (req.method === 'POST' && action === 'quit') {
+      const {state} = await mutate(room, s => { engine.quitGame(s, authed(s)); });
+      res.status(200).json({ok: true, view: engine.viewFor(state, me)});
+      return;
+    }
+
     // ---- a move ----
     if (req.method === 'POST' && action === 'move') {
       const body = readBody(req);

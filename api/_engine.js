@@ -83,9 +83,12 @@ function sanitizeLimit(n) {
   return LIMITS.indexOf(v) === -1 ? DEFAULT_LIMIT : v;
 }
 
-/** Players still in the match. */
+/** Has this player walked out? */
+const hasQuit = (state, pid) => !!(state.quit && state.quit[pid]);
+
+/** Players still in the match: not knocked out, and still in the room. */
 function activePlayers(state) {
-  return state.players.filter(p => !state.eliminated[p.id]);
+  return state.players.filter(p => !state.eliminated[p.id] && !hasQuit(state, p.id));
 }
 
 function defaultOpts() {
@@ -153,9 +156,10 @@ function createState() {
     v: 1,
     phase: 'lobby',
     createdAt: Date.now(),
-    players: [],       // seating order; players[0] is the host
+    players: [],       // seating order; the first one still here is the host
     opts: defaultOpts(),
     secrets: {},       // token -> playerId. NEVER leaves the server.
+    quit: {},          // pid -> true once they have left the room
     log: [],
 
     // ---- the match, which outlives any one hand ----
@@ -192,7 +196,17 @@ function playerIdForToken(state, token) {
   return state.secrets[token] || null;
 }
 
-const isHost = (state, pid) => state.players.length > 0 && state.players[0].id === pid;
+/**
+ * The host is the first player who is still in the room. Deriving it rather
+ * than pinning it to players[0] means a host who quits mid-match hands the
+ * job to the next seat instead of stranding the table with nobody to deal.
+ */
+function hostId(state) {
+  const here = state.players.filter(p => !hasQuit(state, p.id));
+  return here.length ? here[0].id : null;
+}
+
+const isHost = (state, pid) => !!pid && hostId(state) === pid;
 
 // ------------------------------------------------------------------- dealing
 /** Wipes the scoresheet so the table can start a brand new match. */
@@ -282,6 +296,70 @@ function endRound(state, winnerPid) {
   } else {
     state.phase = 'round';
   }
+}
+
+/**
+ * A player leaves the room for good.
+ *
+ * In the lobby they are erased - no seat, no score, nothing refers to them, so
+ * the room should look as though they never arrived. Once the cards are out
+ * they cannot be erased, because the scoresheet names them, so they are marked
+ * instead and skipped everywhere `activePlayers` is consulted.
+ *
+ * Walking out mid-hand is a forfeit. Their cards go back into the pile (the
+ * deck has to keep adding up), their seat is spliced out, and the turn is
+ * rewound onto whoever should be playing now.
+ */
+function quitGame(state, pid) {
+  const p = state.players.find(x => x.id === pid);
+  if (!p) throw new GameError('You are not in this room.');
+  if (hasQuit(state, pid)) throw new GameError('You have already left.');
+
+  if (state.phase === 'lobby') {
+    state.players = state.players.filter(x => x.id !== pid);
+    Object.keys(state.secrets).forEach(t => { if (state.secrets[t] === pid) delete state.secrets[t]; });
+    if (state.scores) delete state.scores[pid];
+    logLine(state, p.name + ' left.');
+    return;
+  }
+
+  if (!state.quit) state.quit = {};
+  state.quit[pid] = true;
+  logLine(state, p.name + ' left the game.');
+
+  // Between hands, or after the match, there is no seat to unpick.
+  if (state.phase !== 'play') return;
+
+  const k = seatIdx(state, pid);
+  if (k === -1) return;
+
+  // Their hand returns to the pile, so no card is created or destroyed.
+  state.draw = shuffle(state.draw.concat(state.hands[pid] || []));
+  state.hands[pid] = [];
+  delete state.uncalled[pid];
+
+  const wasTheirTurn = state.turn === k;
+  state.seats.splice(k, 1);
+
+  // Splicing shifts every later seat down one. A seat before the current one
+  // drags the turn with it; leaving on your own turn passes play along, which
+  // is where the index already points when play runs forwards.
+  if (k < state.turn) state.turn--;
+  else if (wasTheirTurn && state.dir === -1) state.turn--;
+
+  // Whatever was aimed at them leaves with them.
+  if (wasTheirTurn) state.pending = null;
+
+  const n = state.seats.length;
+  if (n === 0) {                      // everyone walked out
+    state.phase = 'over';
+    state.winner = null;
+    return;
+  }
+  state.turn = ((state.turn % n) + n) % n;
+
+  // Last player at the table takes the hand by default.
+  if (n === 1) endRound(state, state.seats[0]);
 }
 
 // -------------------------------------------------------------------- helpers
@@ -445,10 +523,20 @@ function doPlay(state, pid, move) {
     case 'mirror':
       if (state.pending) {
         const back = state.pending.from;
-        state.pending = {kind: state.pending.kind, n: state.pending.n + 1, from: pid};
-        state.turn = seatIdx(state, back);
-        advance = 0;
-        logLine(state, 'Mirrored straight back at ' + nameOf(state, back) + '.');
+        const backSeat = seatIdx(state, back);
+        if (backSeat === -1) {
+          // Whoever sent this has left the table, so there is nobody to bounce
+          // it at. The attack dies with them and the mirror does what it does
+          // with nothing pending. Without this the turn lands on seat -1.
+          state.pending = null;
+          if (state.seats.length === 2) advance = 2; else state.dir *= -1;
+          logLine(state, nameOf(state, back) + ' had already left — the attack fizzles.');
+        } else {
+          state.pending = {kind: state.pending.kind, n: state.pending.n + 1, from: pid};
+          state.turn = backSeat;
+          advance = 0;
+          logLine(state, 'Mirrored straight back at ' + nameOf(state, back) + '.');
+        }
       } else {
         if (state.seats.length === 2) advance = 2; else state.dir *= -1;
         logLine(state, 'Direction mirrored.');
@@ -604,11 +692,12 @@ function viewFor(state, pid) {
       color: p.color,
       count: state.hands && state.hands[p.id] ? state.hands[p.id].length : 0,
       uncalled: !!(state.uncalled && state.uncalled[p.id] && state.hands[p.id] && state.hands[p.id].length === 1),
-      host: state.players[0] && state.players[0].id === p.id,
+      host: hostId(state) === p.id,
       // Running total and whether they have dropped out — public by design,
       // the scoresheet is meant to be read across the table.
       score: (state.scores && state.scores[p.id]) || 0,
       out: !!(state.eliminated && state.eliminated[p.id]),
+      quit: hasQuit(state, p.id),
     })),
     log: (state.log || []).slice(-12),
 
@@ -644,7 +733,7 @@ module.exports = {
   GameError,
   LIMITS, DEFAULT_LIMIT, POINTS_ACTION, POINTS_WILD,
   defaultOpts, sanitizeOpts, sanitizeLimit, buildDeck, shuffle, fireCount,
-  createState, addPlayer, playerIdForToken, isHost, startGame,
+  createState, addPlayer, playerIdForToken, isHost, hostId, startGame, quitGame,
   canPlay, applyMove, viewFor,
   cardValue, handValue, resetMatch, activePlayers, endRound,
   // exported for tests
