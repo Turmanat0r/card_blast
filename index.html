@@ -157,10 +157,23 @@ table.score{width:100%;border-collapse:collapse;font-size:13px}
 
 /* ---------- lobby ---------- */
 .codebox{
-  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
-  background:var(--panel-2);border:1px dashed var(--line);border-radius:12px;padding:14px;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  background:var(--panel-2);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px;
 }
-#lobbyCode{font-size:26px;font-weight:700;letter-spacing:.16em}
+.codeside{display:flex;flex-direction:column;gap:2px;min-width:0}
+#lobbyCode{font-size:22px;font-weight:700;letter-spacing:.16em}
+
+/* The link, always visible and always selectable, so it can be copied by hand
+   when the share sheet and the clipboard are both unavailable. */
+.linkbox{display:flex;gap:8px;margin-bottom:12px}
+.linkbox input{
+  flex:1;min-width:0;padding:11px 12px;border-radius:11px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--muted);font:inherit;font-size:12.5px;font-weight:500;
+  text-overflow:ellipsis;
+}
+.linkbox input:focus{outline:none;border-color:var(--frost);color:var(--text)}
+.linkbox .btn{flex:none}
+#inviteOther a{color:var(--muted);text-decoration:underline}
 .plist{display:flex;flex-direction:column;gap:8px}
 .pchip{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel-2);border-radius:11px;border:1px solid var(--line)}
 .dot{width:12px;height:12px;border-radius:50%;flex:none}
@@ -312,8 +325,8 @@ table.score{width:100%;border-collapse:collapse;font-size:13px}
 
 <!-- ============ HOME ============ -->
 <section id="screen-home" class="screen on">
-  <h1>Shed your hand.<br>Survive the <span class="blast">blaster</span>.</h1>
-  <p class="lede">Match colour or number to dump cards. Stuck? Hit the launcher &mdash; it might spit out nothing, or it might bury you. Everyone plays on their own phone.</p>
+  <h1 id="homeTitle">Shed your hand.<br>Survive the <span class="blast">blaster</span>.</h1>
+  <p class="lede" id="homeLede">Match colour or number to dump cards. Stuck? Hit the launcher &mdash; it might spit out nothing, or it might bury you. Everyone plays on their own phone.</p>
 
   <!-- Returning player: we already know who they are, so don't make them
        set it up again. One tap reveals the editor. -->
@@ -343,9 +356,15 @@ table.score{width:100%;border-collapse:collapse;font-size:13px}
     </div>
   </div>
 
+  <!-- Shown only when the page was opened from an invite link. -->
+  <button class="btn go" id="inviteJoinBtn" style="display:none">Join the game</button>
+  <p class="muted" id="inviteOther" style="text-align:center;margin-top:10px;display:none">
+    <a href="#" id="inviteOtherLink">Join a different room instead</a>
+  </p>
+
   <button class="btn primary" id="createBtn">Start a new room</button>
-  <div class="sep">or join one</div>
-  <div class="panel">
+  <div class="sep" id="joinSep">or join one</div>
+  <div class="panel" id="joinPanel">
     <label for="codeIn">Room code</label>
     <input type="text" id="codeIn" class="code" maxlength="12" placeholder="ABC123" autocomplete="off" autocapitalize="characters">
     <div style="height:10px"></div>
@@ -355,11 +374,23 @@ table.score{width:100%;border-collapse:collapse;font-size:13px}
 
 <!-- ============ LOBBY ============ -->
 <section id="screen-lobby" class="screen">
-  <h2>Room code</h2>
+  <h2>Invite your players</h2>
+  <button class="btn primary" id="shareBtn">&#128228; Send invite link</button>
+  <p class="muted" id="shareHint" style="text-align:center;margin:9px 0 14px">
+    One tap and they are at the table &mdash; no code to type.
+  </p>
+
+  <div class="linkbox">
+    <input type="text" id="linkOut" readonly spellcheck="false" aria-label="Invite link">
+    <button class="btn sm" id="copyLinkBtn">Copy</button>
+  </div>
+
   <div class="codebox">
-    <span id="lobbyCode">------</span>
-    <button class="btn sm" id="copyCodeBtn">Copy</button>
-    <button class="btn sm" id="shareBtn">Share link</button>
+    <div class="codeside">
+      <div class="tag">or read out the code</div>
+      <span id="lobbyCode">------</span>
+    </div>
+    <button class="btn sm ghost" id="copyCodeBtn">Copy code</button>
   </div>
 
   <div class="panel">
@@ -531,6 +562,11 @@ let myName = localStorage.getItem('cb_name') || '';
 let myColor = localStorage.getItem('cb_color') || 'ember';
 let nameIsGenerated = false;   // false once the player types their own
 let editingIdentity = false;   // true while the name/colour editor is open
+// Whether THIS DEVICE has played before, captured before anything rolls a name
+// into myName. Only a device that already knew its player skips the setup
+// screen or walks straight into a room from a link — a first-time visitor gets
+// to see, and change, the name they were handed.
+const returningPlayer = !!myName;
 let room = '';
 let token = '';
 let view = null;         // the redacted blob from the server
@@ -766,6 +802,7 @@ function showPeek(peek) {
 
 function renderLobby() {
   $('lobbyCode').textContent = room || '------';
+  $('linkOut').value = room ? inviteLink() : '';
   const ps = view ? view.players : [];
   $('pcount').textContent = ps.length ? '(' + ps.length + ')' : '';
   const list = $('plist');
@@ -1208,7 +1245,7 @@ $('scoreBtn').onclick = showScoresheet;
  * editor is one tap away.
  */
 function renderIdentity() {
-  const settled = !!myName && !editingIdentity;
+  const settled = returningPlayer && !!myName && !editingIdentity;
   $('knownYou').style.display = settled ? 'flex' : 'none';
   $('identityEditor').style.display = settled ? 'none' : '';
   $('knownName').textContent = myName || '—';
@@ -1219,6 +1256,58 @@ $('changeMeBtn').onclick = () => {
   editingIdentity = true;
   renderIdentity();
   $('nameIn').focus();
+};
+
+// ---- arriving from an invite link -------------------------------------------
+let invitedTo = '';
+
+/**
+ * Reshapes the home screen for someone who followed an invite: the point of
+ * the link is that they never have to see, type or paste a room code, so the
+ * code box and "start a room" both get out of the way and there is one button.
+ */
+function setInviteMode(code) {
+  invitedTo = code;
+  $('homeTitle').innerHTML = 'You are invited to a <span class="blast">game</span>.';
+  $('homeLede').textContent = 'Room ' + code + '. Pick a name and jump straight in — '
+    + 'everyone plays on their own phone.';
+  $('inviteJoinBtn').style.display = '';
+  $('inviteOther').style.display = '';
+  $('createBtn').style.display = 'none';
+  $('joinSep').style.display = 'none';
+  $('joinPanel').style.display = 'none';
+}
+
+function clearInviteMode() {
+  invitedTo = '';
+  $('homeTitle').innerHTML = 'Shed your hand.<br>Survive the <span class="blast">blaster</span>.';
+  $('homeLede').textContent = 'Match colour or number to dump cards. Stuck? Hit the launcher — '
+    + 'it might spit out nothing, or it might bury you. Everyone plays on their own phone.';
+  $('inviteJoinBtn').style.display = 'none';
+  $('inviteOther').style.display = 'none';
+  $('createBtn').style.display = '';
+  $('joinSep').style.display = '';
+  $('joinPanel').style.display = '';
+}
+
+$('inviteOtherLink').onclick = e => { e.preventDefault(); clearInviteMode(); };
+
+$('inviteJoinBtn').onclick = async function () {
+  if (!readIdentity()) return;
+  this.disabled = true;
+  const original = this.textContent;
+  this.textContent = 'Joining…';
+  try {
+    await enterRoom(invitedTo);
+  } catch (e) {
+    room = ''; token = '';
+    alert(/already started/i.test(e.message || '')
+      ? 'That game is already under way — you cannot join mid-match.'
+      : (e.message || 'Could not join that room.'));
+  } finally {
+    this.disabled = false;
+    this.textContent = original;
+  }
 };
 
 document.querySelectorAll('.swatch').forEach(sw => {
@@ -1293,15 +1382,60 @@ $('copyCodeBtn').onclick = async function () {
   setTimeout(() => { this.textContent = original; }, 2200);
 };
 
+/** The link that drops someone straight into this room. */
+function inviteLink() {
+  return location.origin + location.pathname + '?room=' + encodeURIComponent(room);
+}
+
+/** Briefly relabels a button, then puts it back. */
+function blip(btn, text) {
+  const original = btn.dataset.label || btn.textContent;
+  btn.dataset.label = original;
+  btn.textContent = text;
+  setTimeout(() => { btn.textContent = btn.dataset.label || original; }, 2200);
+}
+
+/** Selects the link so a long-press or Ctrl+C can take it — the last resort. */
+function selectLink() {
+  const el = $('linkOut');
+  el.focus();
+  el.setSelectionRange(0, el.value.length);
+}
+
+/**
+ * Three ways to hand over the link, in order of how pleasant they are:
+ * the OS share sheet (pick Messages/WhatsApp directly), the clipboard, or
+ * selecting the text for a manual copy. Cancelling the share sheet is not a
+ * failure, so it must not be reported as one.
+ */
 $('shareBtn').onclick = async function () {
-  const url = location.origin + location.pathname + '?room=' + encodeURIComponent(room);
-  const original = this.textContent;
+  const url = inviteLink();
+  if (navigator.share) {
+    try {
+      await navigator.share({title: 'Card Blast', text: 'Join my Card Blast game', url});
+      return;
+    } catch (e) {
+      if (e && (e.name === 'AbortError' || /abort|cancel/i.test(e.message || ''))) return;
+      // Share exists but refused — fall through to the clipboard.
+    }
+  }
   try {
-    if (navigator.share) { await navigator.share({title: 'Card Blast', text: 'Join my game', url}); return; }
     await navigator.clipboard.writeText(url);
-    this.textContent = 'Link copied';
-  } catch (e) { this.textContent = 'Copy failed'; }
-  setTimeout(() => { this.textContent = original; }, 2200);
+    blip(this, '✅ Link copied — paste it to them');
+  } catch (e) {
+    selectLink();
+    blip(this, 'Copy the link below');
+  }
+};
+
+$('copyLinkBtn').onclick = async function () {
+  try {
+    await navigator.clipboard.writeText(inviteLink());
+    blip(this, 'Copied');
+  } catch (e) {
+    selectLink();
+    blip(this, 'Press copy');
+  }
 };
 
 // Deep link: ?room=CODE prefills the code, and walks straight back in if this
@@ -1311,10 +1445,12 @@ $('shareBtn').onclick = async function () {
   const code = (qs.get('room') || '').toUpperCase();
   if (!code) return;
   $('codeIn').value = code;
-  // Already know who you are? Go straight to the table — that is the whole
-  // point of remembering the name. Falls back to the home screen if the room
-  // has gone or the hand is already under way.
-  if (!myName) return;
+  setInviteMode(code);
+
+  // Already know who you are? Skip the screen entirely and land at the table —
+  // that is the whole point of pairing a saved name with an invite link. A new
+  // player stays on the invite screen, which is one button.
+  if (!returningPlayer || !myName) return;
   try {
     await enterRoom(code);
   } catch (e) {

@@ -47,6 +47,15 @@ cards per press makes the table inject cards faster than players can shed
 them, which turns a 15-minute game into an hour (measured: 236 moves per game
 at ~2.0, 122 at ~1.5).
 
+**Inviting people.** The lobby leads with **Send invite link**, which opens the
+OS share sheet on a phone (pick Messages, WhatsApp, whatever), falls back to
+the clipboard, and failing that selects the link in a box for a manual copy.
+The link is `?room=CODE`, so opening it reshapes the home screen into a single
+**Join the game** button — no code to read, type or paste. The room code is
+still shown for reading aloud in the same room. A device that has played before
+skips the screen entirely and lands at the table; a first-time visitor always
+sees the name they were handed before joining.
+
 **Your name sticks.** Name and colour are remembered on the device, so a
 returning player sees "Playing as Sirocco" and a Change button rather than
 setting up again. Opening a shared room link with a name already saved takes
@@ -135,6 +144,7 @@ node test/security.test.js    # 43 — redaction, tokens, move validation
 node test/api.test.js         # 36 — the real handler against a fake Redis
 node test/names.test.js       # 16 — the random-name pools (incl. the 14-char cap)
 node test/match.test.js       # 56 — card values, scoresheet, knock-outs, match length
+node test/invite.test.js      # 29 — the invite-link flow, both ends
 node test/sim.js 500          # fuzzer: 500 random games, 2-6 players
 node test/sim.js 800 4        # 800 games pinned to 4 players
 ```
