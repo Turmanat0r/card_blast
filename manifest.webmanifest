@@ -1,0 +1,12 @@
+{
+  "name": "Card Blast",
+  "short_name": "Card Blast",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c1220",
+  "theme_color": "#0c1220",
+  "icons": [
+    { "src": "/card-blast-192x192.webp", "sizes": "192x192", "type": "image/webp" },
+    { "src": "/card-blast-512x512.webp", "sizes": "512x512", "type": "image/webp" }
+  ]
+}
